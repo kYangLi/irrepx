@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "irrepx"
+version = "0.0.0"
+authors = [
+    {name = "DeepH team", email = "deeph-pack@outlook.com"},
+]
+description = "Minimal O(3) irreducible representations with optional JAX support. A lightweight, pure-Python replacement for the core of e3nn-jax."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+keywords = [
+    "irreps", "irreducible representations", "O(3)", "SO(3)", "e3nn",
+    "equivariance", "JAX", "symmetry", "spherical harmonics",
+    "deep learning", "neural networks", "physics",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+requires-python = ">=3.12,<3.15"
+dependencies = []
+
+[project.optional-dependencies]
+jax = ["jax>=0.4.0"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+    "black>=23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/kYangLi/irrepx"
+Documentation = "https://github.com/kYangLi/irrepx#readme"
+Repository = "https://github.com/kYangLi/irrepx.git"
+Issues = "https://github.com/kYangLi/irrepx/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["irrepx*"]
+exclude = [
+    "docs*", "examples*", "tests*", ".*",
+    "*.egg-info", "build*", "Makefile"
+]
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--tb=short"]

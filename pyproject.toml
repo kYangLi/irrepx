@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "irrepx"
-version = "0.0.0"
+version = "0.1.0"
 authors = [
     {name = "DeepH team", email = "deeph-pack@outlook.com"},
 ]
@@ -30,11 +30,19 @@ requires-python = ">=3.12,<3.15"
 dependencies = []
 
 [project.optional-dependencies]
-jax = ["jax>=0.4.0"]
+jax = ["jax==0.9.2"]
 dev = [
     "pytest>=7.0",
     "ruff>=0.1.0",
     "black>=23.0",
+]
+test = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+    "black>=23.0",
+    "jax==0.9.2",
+    "e3nn-jax>=0.21.0",
+    "e3nn>=0.5.0",
 ]
 
 [project.urls]
@@ -63,4 +71,8 @@ line-length = 120
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = ["-v", "--tb=short"]
+addopts = ["-v", "--tb=short", "--strict-markers"]
+markers = [
+    "requires_jax: tests that need JAX installed",
+    "requires_e3nn_jax: tests that need e3nn-jax installed for cross-validation",
+]

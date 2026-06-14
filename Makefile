@@ -9,6 +9,7 @@ help:
 	@echo "Targets:"
 	@echo "  install       Create .venv, install in editable mode (light mode, no JAX)"
 	@echo "  install-jax   Create .venv, install in editable mode (full mode, with JAX)"
+	@echo "  install-test  Create .venv, install in editable mode with all test deps (jax + e3nn-jax + e3nn)"
 	@echo "  test          Run all tests (light mode)"
 	@echo "  test-jax      Run all tests (full mode, with JAX)"
 	@echo "  build         Build distribution wheel"
@@ -31,6 +32,14 @@ install-jax:
 	fi
 	@echo "Installing package in editable mode with dev + jax dependencies (full mode)..."
 	uv pip install -e ".[dev,jax]"
+
+install-test:
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "Creating virtual environment with uv..."; \
+		uv venv; \
+	fi
+	@echo "Installing package in editable mode with all test dependencies (jax + e3nn-jax + e3nn)..."
+	uv pip install -e ".[test]"
 
 test:
 	pytest tests

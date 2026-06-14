@@ -5,7 +5,6 @@ A pure-Python implementation of O(3) irreducible representations,
 inspired by and API-compatible with e3nn-jax's Irrep/Irreps classes.
 """
 
-
 import collections
 import dataclasses
 import itertools
@@ -13,6 +12,8 @@ import math
 from typing import Callable, List, NamedTuple, Tuple, Union
 
 IntoIrrep = Union[int, "Irrep", "MulIrrep", Tuple[int, int]]
+
+_sort_namedtuple = collections.namedtuple("sort", ["irreps", "p", "inv"])
 
 
 @dataclasses.dataclass(init=False, frozen=True)
@@ -82,8 +83,10 @@ class Irrep:
             elif isinstance(l, tuple):
                 l, p = l  # noqa: E741
 
-        assert isinstance(l, int) and l >= 0, l
-        assert p in [-1, 1], p
+        if not (isinstance(l, int) and l >= 0):
+            raise ValueError(f"l must be a non-negative integer, got {l}")
+        if p not in [-1, 1]:
+            raise ValueError(f"p must be 1 or -1, got {p}")
         object.__setattr__(self, "l", l)
         object.__setattr__(self, "p", p)
 
@@ -520,11 +523,14 @@ class Irreps(tuple):
             >>> Irreps("2o + 1e + 0e + 1e").sort().inv
             (2, 1, 3, 0)
         """
-        Ret = collections.namedtuple("sort", ["irreps", "p", "inv"])
+        Ret = _sort_namedtuple
         out = [(ir, i, mul) for i, (mul, ir) in enumerate(self)]
         out = sorted(out)
         inv = tuple(i for _, i, _ in out)
-        p = tuple(inv.index(i) for i in range(len(inv)))
+        p = [0] * len(inv)
+        for new_pos, old_idx in enumerate(inv):
+            p[old_idx] = new_pos
+        p = tuple(p)
         irreps = Irreps([(mul, ir) for ir, _, mul in out])
         return Ret(irreps, p, inv)
 
@@ -785,3 +791,43 @@ class _ChunkIndexSliceHelper:
             raise IndexError("Irreps.slice_by_chunk only supports slices.")
 
         return Irreps(self.irreps[index])
+
+
+def align_two_irreps(irreps1, irreps2):
+    r"""Split two Irreps so their multiplicities match at each position.
+
+    Both inputs must have the same ``num_irreps`` (total sum of multiplicities).
+    Returns two new Irreps with identical mul patterns, suitable for elementwise ops.
+
+    Args:
+        irreps1 (Irreps): First irreps
+        irreps2 (Irreps): Second irreps
+
+    Returns:
+        (Irreps, Irreps): Aligned irreps with matching muls at each position.
+    """
+    irreps1 = Irreps(irreps1)
+    irreps2 = Irreps(irreps2)
+    if irreps1.num_irreps != irreps2.num_irreps:
+        raise ValueError(f"align_two_irreps requires same num_irreps, got {irreps1.num_irreps} != {irreps2.num_irreps}")
+
+    irreps1_l = list(irreps1)
+    irreps2_l = list(irreps2)
+
+    i = 0
+    while i < min(len(irreps1_l), len(irreps2_l)):
+        mul_1, ir_1 = irreps1_l[i]
+        mul_2, ir_2 = irreps2_l[i]
+
+        if mul_1 < mul_2:
+            irreps2_l[i] = (mul_1, ir_2)
+            irreps2_l.insert(i + 1, (mul_2 - mul_1, ir_2))
+
+        if mul_2 < mul_1:
+            irreps1_l[i] = (mul_2, ir_1)
+            irreps1_l.insert(i + 1, (mul_1 - mul_2, ir_1))
+
+        i += 1
+
+    assert [mul for mul, _ in irreps1_l] == [mul for mul, _ in irreps2_l]
+    return Irreps(irreps1_l), Irreps(irreps2_l)

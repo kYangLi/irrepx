@@ -1,4 +1,4 @@
-from irrepx import Irrep, Irreps, MulIrrep
+from irrepx import Irrep, Irreps
 
 
 class TestIrrep:

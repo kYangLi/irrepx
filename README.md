@@ -1,5 +1,16 @@
 # irrepx
 
+<div align="center">
+
+[![GitHub Actions CI](https://github.com/kYangLi/irrepx/actions/workflows/publish.yaml/badge.svg)](https://github.com/kYangLi/irrepx/actions/workflows/publish.yaml)
+[![PyPI Version](https://img.shields.io/pypi/v/irrepx.svg)](https://pypi.org/project/irrepx/)
+[![Python Versions](https://img.shields.io/badge/python-3.12|3.13|3.14-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/pypi/l/irrepx.svg)](https://pypi.org/project/irrepx/)
+[![GitHub Issues](https://img.shields.io/github/issues/kYangLi/irrepx.svg)](https://github.com/kYangLi/irrepx/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/kYangLi/irrepx.svg?style=social)](https://github.com/kYangLi/irrepx/stargazers)
+
+</div>
+
 Minimal O(3) irreducible representations with optional JAX support.
 
 ## Install

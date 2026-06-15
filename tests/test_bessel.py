@@ -12,8 +12,8 @@ def test_bessel_roots_accuracy():
     roots = compute_sb_roots(_LMAX)
     for _ell in range(_LMAX):
         for r in roots[_ell][:5]:
-            val = spherical_jn(_ell, r)
-            assert abs(val) < 1e-8, f"j_{_ell}({r}) = {val}"
+            val = spherical_jn(_ell, r * np.pi)
+            assert abs(val) < 1e-8, f"j_{_ell}({r}π) = {val}"
 
 
 def test_bessel_roots_monotonic():
@@ -32,7 +32,7 @@ def test_bessel_roots_count():
 def test_bessel_roots_l_zero():
     roots = compute_sb_roots(0, num_roots=256)
     for i, r in enumerate(roots[0][:5]):
-        expected = (i + 1) * np.pi
+        expected = float(i + 1)
         assert abs(r - expected) < 1e-10, f"j_0 root {i}: {r} != {expected}"
 
 

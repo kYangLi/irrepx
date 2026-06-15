@@ -68,7 +68,7 @@ class TestBessel:
         roots = compute_sb_roots(8)
         for ell in range(8):
             for r in roots[ell][:5]:
-                assert abs(spherical_jn(ell, r)) < 1e-8
+                assert abs(spherical_jn(ell, r * np.pi)) < 1e-8
 
     def test_roots_monotonic(self):
         roots = compute_sb_roots(8)
@@ -82,6 +82,6 @@ class TestBessel:
             assert len(roots[ell]) == 256
 
     def test_roots_l_zero_exact(self):
-        roots = compute_sb_roots(0)
+        roots = compute_sb_roots(0, num_roots=256)
         for i, r in enumerate(roots[0][:5]):
-            assert abs(r - (i + 1) * np.pi) < 1e-10
+            assert abs(r - float(i + 1)) < 1e-10

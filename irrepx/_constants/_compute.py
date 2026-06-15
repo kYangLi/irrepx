@@ -221,10 +221,11 @@ def jd_seed(l: int) -> np.ndarray:  # noqa: E741
 
 
 def compute_sb_roots(lmax: int, num_roots: int = 1000) -> list[np.ndarray]:
-    r"""Compute spherical Bessel roots :math:`j_l(x) = 0`.
+    r"""Compute spherical Bessel roots :math:`j_l(x) = 0`, divided by :math:`\pi`.
 
     Uses scipy's Newton solver with a guaranteed-convergence initial guess
-    (:math:`\ell + \pi`).
+    (:math:`\ell + \pi`).  Roots returned as ``root / \pi`` to match the
+    DeepH-pack convention.
 
     Args:
         lmax: maximum :math:`\ell`.
@@ -244,7 +245,7 @@ def compute_sb_roots(lmax: int, num_roots: int = 1000) -> list[np.ndarray]:
         guess = ell + np.pi
         for _ in range(num_roots):
             r = newton(lambda x: spherical_jn(ell, x), guess, tol=1e-12, maxiter=100)
-            roots.append(float(r))
+            roots.append(float(r) / np.pi)
             guess = r + np.pi
         out.append(np.array(roots, dtype=np.float64))
     return out

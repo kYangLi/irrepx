@@ -2,49 +2,50 @@
 
 Minimal O(3) irreducible representations with optional JAX support.
 
-A lightweight, pure-Python replacement for the core data structures and
-operations of e3nn-jax, designed to be maintained independently of the
-now-unmaintained upstream library.
-
 ## Install
 
-### Light mode (pure Python, no JAX)
-
 ```bash
-pip install irrepx
+pip install irrepx               # Light mode: representation algebra only
+pip install irrepx[jax]          # Full mode: JAX (any platform, pre-installed)
 ```
 
-Provides `Irrep`, `MulIrrep`, `Irreps` — zero dependencies beyond the
-Python standard library.
-
-### Full mode (with JAX computation)
+One-step install with the right JAX backend:
 
 ```bash
-pip install irrepx[jax]
+pip install irrepx[jax-cpu]      # CPU
+pip install irrepx[jax-cuda12]   # CUDA 12
+pip install irrepx[jax-cuda13]   # CUDA 13
+pip install irrepx[jax-tpu]      # TPU
 ```
-
-Adds `IrrepsArray`, `spherical_harmonics`, `tensor_product`, and more
-(functional API, JIT-compatible).
-
-> Full mode is not yet available as of v0.0.0.
 
 ## Quick Start
 
 ```python
 from irrepx import Irrep, Irreps
 
-# Create irreps by string
+# Structural algebra (no JAX needed)
 irreps = Irreps("32x0e + 16x1o + 8x2e")
-print(irreps.dim)      # 32*1 + 16*3 + 8*5 = 120
-print(irreps.lmax)     # 2
-print(irreps.regroup()) # 32x0e+16x1o+8x2e
-
-# Build spherical harmonic representation
-sh = Irreps.spherical_harmonics(lmax=3)
-print(sh)  # 1x0e+1x1o+1x2e+1x3o
-
-# Check equivalences
+assert irreps.dim == 32 + 48 + 40
 assert Irrep("2e") in Irrep("1o") * Irrep("1o")
+```
+
+With JAX installed:
+
+```python
+import jax.numpy as jnp
+from irrepx import IrrepsArray, spherical_harmonics
+
+x = IrrepsArray("1o", jnp.array([[1.0, 0.0, 0.0]]))
+sh = spherical_harmonics([0, 1, 2], x, normalize=True)
+print(sh.irreps)  # 1x0e+1x1o+1x2e
+```
+
+## CLI
+
+```bash
+irrepx cg --lmax 7 --include-soc -o cg.h5
+irrepx jd --lmax 13 -o jd.h5
+irrepx sb --lmax 13 -o sb.h5
 ```
 
 ## License

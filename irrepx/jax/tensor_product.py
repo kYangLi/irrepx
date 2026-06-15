@@ -24,6 +24,10 @@ def tensor_product(
     if filter_ir_out is not None:
         filter_ir_out = [Irrep(ir) for ir in filter_ir_out]
 
+    if regroup_output:
+        input1 = input1.regroup()
+        input2 = input2.regroup()
+
     out_chunks_irreps = []
     out_chunks = []
 

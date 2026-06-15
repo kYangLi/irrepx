@@ -100,9 +100,8 @@ def clebsch_gordan(l1: int, l2: int, l3: int) -> np.ndarray:
     Q2 = _change_basis_real_to_complex(l2)
     Q3 = _change_basis_real_to_complex(l3)
     C = np.einsum("ij,kl,mn,ikn->jlm", Q1, Q2, np.conj(Q3.T), C)
-    assert np.all(
-        np.abs(np.imag(C)) < 1e-10
-    ), f"CG coefficients must be real, got max imag={np.max(np.abs(np.imag(C)))}"
+    max_imag = np.max(np.abs(np.imag(C)))
+    assert max_imag < 1e-10, f"CG coefficients must be real, got max imag={max_imag}"
     return np.real(C)
 
 

@@ -111,5 +111,6 @@ class TestIrrepsArray:
         y = x.astype(jnp.float32)
         assert y.dtype == jnp.float32
         # float64 may be truncated to float32 when jax_enable_x64 is off
-        y2 = x.astype(jnp.float64)
+        with pytest.warns(UserWarning, match="float64"):
+            y2 = x.astype(jnp.float64)
         assert y2.dtype in (jnp.float64, jnp.float32)

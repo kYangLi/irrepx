@@ -1,6 +1,12 @@
 import jax
 import jax.numpy as jnp
+import warnings
 from jax import lax
+
+# NOTE: lpmn_values is deprecated in JAX >= 0.9.x (no replacement planned).
+# If removed, the legendre SH path (l > 8) requires a fallback:
+#   (1) use recursive CG for all l
+#   (2) implement Stratton recurrence for associated Legendre functions
 
 from irrepx.constants import clebsch_gordan
 from irrepx.irreps import Irreps
@@ -76,7 +82,9 @@ def _sh_alpha(l, alpha):
 
 def _legendre_gen(lmax, x, is_normalized):
     x = jnp.clip(x, -1.0, 1.0)
-    p = jax.scipy.special.lpmn_values(lmax, lmax, x.flatten(), is_normalized)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        p = jax.scipy.special.lpmn_values(lmax, lmax, x.flatten(), is_normalized)
     p = (-1) ** jnp.arange(lmax + 1)[:, None, None] * p
     p = jnp.transpose(p, (1, 0, 2))
     p = jnp.reshape(p, (lmax + 1, lmax + 1) + x.shape)

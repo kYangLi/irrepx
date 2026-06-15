@@ -4,7 +4,7 @@ import pytest
 jax = pytest.importorskip("jax")
 jnp = jax.numpy
 
-from irrepx.jax.irreps_array import IrrepsArray, as_irreps_array, concatenate
+from irrepx._jax.irreps_array import IrrepsArray, as_irreps_array, concatenate
 from irrepx.irreps import Irreps
 
 

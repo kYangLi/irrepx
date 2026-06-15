@@ -5,8 +5,8 @@ jax = pytest.importorskip("jax")
 jnp = jax.numpy
 ej = pytest.importorskip("e3nn_jax")
 
-from irrepx.jax.irreps_array import IrrepsArray
-from irrepx.jax.spherical_harmonics import spherical_harmonics
+from irrepx._jax.irreps_array import IrrepsArray
+from irrepx._jax.spherical_harmonics import spherical_harmonics
 
 
 @pytest.fixture(scope="module")

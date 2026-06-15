@@ -1,7 +1,6 @@
 from irrepx._version import __version__
 from irrepx.constants import SPHERICAL_BESSEL_ROOTS, clebsch_gordan, jd_seed, wigner_D
 from irrepx.irreps import Irrep, MulIrrep, Irreps, tensor_product
-from irrepx.normalize import normalize_function
 
 __all__ = [
     "__version__",
@@ -12,7 +11,6 @@ __all__ = [
     "wigner_D",
     "jd_seed",
     "SPHERICAL_BESSEL_ROOTS",
-    "normalize_function",
     "tensor_product",
 ]
 
@@ -29,6 +27,7 @@ _JAX_SYMBOLS = {
     "from_s2grid",
     "s2_irreps",
     "SphericalSignal",
+    "normalize_function",
 }
 
 
@@ -38,7 +37,7 @@ def __getattr__(name):
             import jax  # noqa: F401
         except ImportError:
             raise ImportError(f"`irrepx.{name}` requires JAX. Install with: pip install irrepx[jax]")
-        import irrepx.jax as _jax
+        import irrepx._jax as _jax
 
         return getattr(_jax, name)
     raise AttributeError(f"module 'irrepx' has no attribute '{name}'")

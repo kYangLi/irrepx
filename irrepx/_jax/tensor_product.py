@@ -4,7 +4,7 @@ import jax.numpy as jnp
 
 from irrepx.constants import clebsch_gordan
 from irrepx.irreps import Irrep, Irreps
-from irrepx.jax.irreps_array import IrrepsArray, from_chunks
+from irrepx._jax.irreps_array import IrrepsArray, from_chunks
 
 
 def tensor_product(

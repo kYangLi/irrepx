@@ -61,7 +61,7 @@ Yes. `irrepx/constants.py` uses only numpy, available in light mode.
 `irrepx/__init__.py:27` defines `__getattr__` which intercepts attribute access.
 When `irrepx.IrrepsArray` is accessed:
 1. Checks `_JAX_SYMBOLS` set
-2. Imports `irrepx.jax` and returns the symbol
+2. Imports `irrepx._jax` and returns the symbol
 3. If import fails (no JAX), raises helpful error message
 
 ## Wigner D / Q-Matrix

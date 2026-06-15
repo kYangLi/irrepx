@@ -5,7 +5,7 @@ import pytest
 jax = pytest.importorskip("jax")  # noqa: E402
 jnp = jax.numpy  # noqa: E402
 
-from irrepx.normalize import normalize_function  # noqa: E402
+from irrepx._jax.normalize import normalize_function  # noqa: E402
 
 
 @pytest.mark.parametrize(

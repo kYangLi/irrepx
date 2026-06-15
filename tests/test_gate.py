@@ -6,8 +6,8 @@ jnp = jax.numpy
 ej = pytest.importorskip("e3nn_jax")
 
 from irrepx.irreps import Irreps
-from irrepx.jax.gate import gate
-from irrepx.jax.irreps_array import IrrepsArray
+from irrepx._jax.gate import gate
+from irrepx._jax.irreps_array import IrrepsArray
 
 
 @pytest.mark.parametrize(

@@ -67,7 +67,7 @@ tests/
 
 ### Imports
 - stdlib first, then third-party, then irrepx internal
-- `irrepx/jax/` modules import from `irrepx.constants` and `irrepx.irreps`
+- `irrepx/_jax/` modules import from `irrepx.constants` and `irrepx.irreps`
 - No circular imports between `jax/` submodules
 
 ### Variable naming

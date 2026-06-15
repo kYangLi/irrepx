@@ -5,8 +5,8 @@ import pytest
 jax = pytest.importorskip("jax")  # noqa: E402
 jnp = jax.numpy  # noqa: E402
 
-from irrepx.jax.irreps_array import IrrepsArray  # noqa: E402
-from irrepx.jax.s2grid import SphericalSignal, from_s2grid, s2_irreps, to_s2grid  # noqa: E402
+from irrepx._jax.irreps_array import IrrepsArray  # noqa: E402
+from irrepx._jax.s2grid import SphericalSignal, from_s2grid, s2_irreps, to_s2grid  # noqa: E402
 
 
 class TestToS2Grid:

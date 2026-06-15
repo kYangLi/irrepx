@@ -96,10 +96,10 @@ Deterministic normal-quantile spacing (1,000,001 nodes). No PRNGKey. Matches e3n
 - `irrepx/__init__.py:30` — `__getattr__` lazy import
 - `irrepx/constants.py:84` — `clebsch_gordan` (cached)
 - `irrepx/constants.py:143` — `wigner_D` (Q^T @ D_c @ Q*)
-- `irrepx/jax/spherical_harmonics.py:63` — recursive SH (binary decomposition)
-- `irrepx/jax/spherical_harmonics.py:93` — legendre SH (lpmn_values)
-- `irrepx/jax/irreps_array.py:138` — sort() (static `from_chunks`)
-- `irrepx/jax/s2grid.py:245` — to_s2grid
-- `irrepx/jax/s2grid.py:285` — from_s2grid
+- `irrepx/_jax/spherical_harmonics.py:63` — recursive SH (binary decomposition)
+- `irrepx/_jax/spherical_harmonics.py:93` — legendre SH (lpmn_values)
+- `irrepx/_jax/irreps_array.py:138` — sort() (static `from_chunks`)
+- `irrepx/_jax/s2grid.py:245` — to_s2grid
+- `irrepx/_jax/s2grid.py:285` — from_s2grid
 - `irrepx/io.py:28` — export_cg_h5 (standard COO)
 - `irrepx/io.py:72` — export_jd_h5 (standard dense)

@@ -5,8 +5,8 @@ jax = pytest.importorskip("jax")
 jnp = jax.numpy
 ej = pytest.importorskip("e3nn_jax")
 
-from irrepx.jax.irreps_array import IrrepsArray
-from irrepx.jax.tensor_product import elementwise_tensor_product, tensor_product
+from irrepx._jax.irreps_array import IrrepsArray
+from irrepx._jax.tensor_product import elementwise_tensor_product, tensor_product
 
 
 def test_tensor_product_basic(rng_key):

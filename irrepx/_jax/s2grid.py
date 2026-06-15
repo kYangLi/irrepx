@@ -13,8 +13,8 @@ import jax.numpy as jnp
 import numpy as np
 
 from irrepx.irreps import Irreps
-from irrepx.jax.irreps_array import IrrepsArray
-from irrepx.jax.spherical_harmonics import _legendre_gen, _sh_alpha
+from irrepx._jax.irreps_array import IrrepsArray
+from irrepx._jax.spherical_harmonics import _legendre_gen, _sh_alpha
 
 
 class SphericalSignal:

@@ -4,8 +4,8 @@ import jax
 import jax.numpy as jnp
 
 from irrepx.irreps import Irrep
-from irrepx.jax.irreps_array import IrrepsArray, concatenate, from_chunks
-from irrepx.normalize import normalize_function
+from irrepx._jax.irreps_array import IrrepsArray, concatenate, from_chunks
+from irrepx._jax.normalize import normalize_function
 
 
 def _soft_odd(x):
@@ -104,7 +104,7 @@ def gate(
         normalize_act=normalize_act,
     )
 
-    from irrepx.jax.tensor_product import elementwise_tensor_product
+    from irrepx._jax.tensor_product import elementwise_tensor_product
 
     gated_vectors = elementwise_tensor_product(scalars_gates, vectors, irrep_normalization="component")
 

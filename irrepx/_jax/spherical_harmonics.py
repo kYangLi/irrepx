@@ -10,7 +10,7 @@ from jax import lax
 
 from irrepx.constants import clebsch_gordan
 from irrepx.irreps import Irreps
-from irrepx.jax.irreps_array import IrrepsArray
+from irrepx._jax.irreps_array import IrrepsArray
 
 # ruff: noqa: E741
 

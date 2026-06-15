@@ -5,15 +5,15 @@ import pytest
 jax = pytest.importorskip("jax")  # noqa: E402
 jnp = jax.numpy  # noqa: E402
 
-from irrepx.jax.irreps_array import (  # noqa: E402
+from irrepx._jax.irreps_array import (  # noqa: E402
     IrrepsArray,
     as_irreps_array,
     concatenate,
     from_chunks,
 )
-from irrepx.jax.spherical_harmonics import spherical_harmonics  # noqa: E402
-from irrepx.jax.tensor_product import elementwise_tensor_product, tensor_product  # noqa: E402
-from irrepx.jax.gate import gate  # noqa: E402
+from irrepx._jax.spherical_harmonics import spherical_harmonics  # noqa: E402
+from irrepx._jax.tensor_product import elementwise_tensor_product, tensor_product  # noqa: E402
+from irrepx._jax.gate import gate  # noqa: E402
 from irrepx.irreps import Irreps  # noqa: E402
 
 

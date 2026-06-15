@@ -4,7 +4,7 @@ import pytest
 jax = pytest.importorskip("jax")
 jnp = jax.numpy
 
-from irrepx.jax.irreps_array import IrrepsArray, from_chunks
+from irrepx._jax.irreps_array import IrrepsArray, from_chunks
 from irrepx.irreps import Irreps
 
 

@@ -162,18 +162,9 @@ cg_dense /= √(2·l3+1)  for the specific l3 slice
 
 The `CGCache` class handles this automatically.
 
-## Tasks In Progress
+## Completed Versions
 
-### v0.1.0 ✅
-### v0.2.0 ✅
-
-- `wigner_D` — Wigner D matrices (ZYZ, complex basis + Q^T D Q* real transform)
-- `jd_seed` — JD seed (DeepH-pack convention: (-1)^m row scale + zeroing)
-- `SPHERICAL_BESSEL_ROOTS` — roots of j_l(x)=0 (scipy newton)
-- `export_cg_h5` / `export_jd_h5` / `export_sb_roots_h5` — H5 constant exports
-- `CGCache` — fast H5-to-dense loading with LRU cache
-
-### v0.3.0 (planned)
-
-- `normalize_function` — normalize activation functions
-- `to_s2grid` / `from_s2grid` — S² grid transforms (optional)
+- **v0.0.0** ✅ — Irrep, MulIrrep, Irreps
+- **v0.1.0** ✅ — IrrepsArray, spherical_harmonics, tensor_product, gate
+- **v0.2.0** ✅ — wigner_D, jd_seed, SPHERICAL_BESSEL_ROOTS, H5 export, CLI
+- **v0.3.0** ✅ — normalize_function, SphericalSignal, to_s2grid, from_s2grid

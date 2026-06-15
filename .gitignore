@@ -216,6 +216,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-DEVELOPMENT.md
-TODO.md
 tests/test_cross_deeph.py

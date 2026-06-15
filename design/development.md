@@ -1,37 +1,30 @@
 # Development Guide
 
-**Status**: ✅ Implemented
-**Last Updated**: 2026-06-14
+**Status**: ✅ Complete (v0.3.0)
+**Last Updated**: 2026-06-15
 
 ---
 
 ## Environment Setup
 
-### Option 1: Light mode (no JAX)
 ```bash
-make install          # pip install -e ".[dev]"
-make test             # pytest tests/
+make install        # base + dev (no JAX)
+make install-jax    # base + dev + JAX
+make install-test   # base + test deps (jax + e3nn-jax + e3nn)
 ```
 
-### Option 2: Full mode (with JAX + test deps)
-```bash
-make install-test      # pip install -e ".[test]"  (jax + e3nn-jax + e3nn)
-make test-jax          # pytest tests/
-```
-
-JAX is pinned to `==0.9.2` in `pyproject.toml` (user requirement).
+JAX is pinned to `==0.9.2` in `pyproject.toml`.
 
 ## Make Targets
 
 | Target | Behavior |
 |--------|----------|
-| `make install` | Create `.venv`, install in editable mode (light, no JAX) |
+| `make install` | Create `.venv`, install in editable mode (no JAX) |
 | `make install-jax` | As above + JAX |
 | `make install-test` | As above + JAX + e3nn-jax + e3nn (torch) for cross-validation |
 | `make test` | Run pytest |
-| `make test-jax` | Run pytest (same as `test`) |
-| `make build` | Build distribution wheel (`uv build --wheel -o dist ./`) |
-| `make lint` | `ruff check . && black --check .` |
+| `make build` | Build distribution wheel |
+| `make lint` | ruff check + black |
 | `make clean` | Remove build artifacts and cache |
 | `make help` | Show all targets |
 
@@ -39,22 +32,31 @@ JAX is pinned to `==0.9.2` in `pyproject.toml` (user requirement).
 
 ```
 tests/
-├── test_irreps.py         # v0.0.0 — Irrep, MulIrrep, Irreps (24 tests)
-├── test_constants.py      # v0.1.0 — CG vs e3nn-jax, shape, cache (3 tests)
-├── test_irreps_array.py   # v0.1.0 — IrrepsArray ops (14 tests)
-├── test_sh.py             # v0.1.0 — spherical_harmonics (4 tests)
-├── test_tensor_product.py # v0.1.0 — tp + ewtp (4 tests)
-├── test_gate.py           # v0.1.0 — gate ops (7 tests)
-└── conftest.py            # (not yet created)
+├── conftest.py              # pytest markers (requires_jax/requires_e3nn_jax), rng_key fixture
+├── test_irreps.py           # Irrep, MulIrrep, Irreps
+├── test_constants.py        # clebsch_gordan vs e3nn-jax
+├── test_irreps_array.py     # IrrepsArray ops + structural ops
+├── test_sh.py               # spherical_harmonics (recursive + legendre)
+├── test_tensor_product.py   # tp + ewtp vs e3nn-jax
+├── test_gate.py             # gate vs e3nn-jax
+├── test_wigner.py           # wigner_D + jd_seed + bessel roots
+├── test_io.py               # H5 export/import roundtrip
+├── test_jit.py              # JIT + autodiff for all JAX functions
+├── test_sharding.py         # device placement preservation
+├── test_normalize.py        # normalize_function
+├── test_s2grid.py           # SphericalSignal, to/from_s2grid
+├── test_bessel.py           # spherical Bessel root accuracy
+└── test_cross_deeph.py      # gitignored: cross-validation vs DeepH-pack H5 files
 ```
 
-**Total**: 55 tests, all passing.
+**Total**: 163 tests, all passing.
 
 ### Test Strategy
 
-- **Cross-validation**: `spherical_harmonics`, `tensor_product`, `elementwise_tensor_product` are validated against e3nn-jax reference values (diff < 1e-5)
-- **Isolation**: `gate` tests verify shape/irreps properties without cross-library comparison (e3nn-jax uses different activation functions)
-- **CG validation**: `clebsch_gordan` tested against e3nn-jax to 1e-10
+- **Cross-validation**: spherical_harmonics, tensor_product, gate, wigner_D validated against e3nn-jax/e3nn-torch (diff < 1e-5)
+- **JIT + grad**: all 19 JAX functions verified under `@jax.jit` + `@jax.grad`
+- **DeepH-pack**: `test_cross_deeph.py` validates H5 export against DeepH-pack originals (gitignored)
+- **Sharding**: pytree device preservation, from_chunks device
 
 ## Code Conventions
 
@@ -62,7 +64,6 @@ tests/
 - **Line length**: 120 (ruff + black configured in `pyproject.toml`)
 - **Formatter**: black
 - **Linter**: ruff (E741 allowed for `l` variable — angular momentum convention)
-- **Docstrings**: minimal (this is a lean library)
 
 ### Imports
 - stdlib first, then third-party, then irrepx internal
@@ -70,30 +71,31 @@ tests/
 - No circular imports between `jax/` submodules
 
 ### Variable naming
-- `l` for angular momentum quantum number (convention from physics, `# noqa: E741`)
-- `j1`, `j2`, `j3` for SU(2) angular momentum in `_su2_clebsch_gordan`
-- `mul`, `ir` for multiplicity and irrep in tuple unpacking
+- `l` for angular momentum quantum number (`# noqa: E741`)
+- `j1`, `j2`, `j3` for SU(2) angular momentum
+- `mul`, `ir` for multiplicity/irrep unpacking
 
 ## Debugging Tips
 
 ### CG coefficient mismatch
-If CG values differ from e3nn_jax:
-1. Check `_su2_clebsch_gordan` divides by `sqrt(2*j3 + 1)` (bottom of function)
+1. Check `_su2_clebsch_gordan` divides by `sqrt(2*j3 + 1)`
 2. Verify Racah formula factorial placement (numerator vs denominator)
 3. Check `_change_basis_real_to_complex` uses `(-1j)**l` phase factor
 
 ### tensor_product value mismatch
-If tensor product values are off by a constant factor:
 - Component norm: `cg *= sqrt(ir_out.dim)` (NOT `sqrt(ir_out.dim / (ir1.dim * ir2.dim))`)
 - Norm norm: `cg *= sqrt(ir1.dim * ir2.dim)`
 
 ### sort/reorder bug
-If `sort()` produces wrong values:
 - Use `ret.inv` (NOT `ret.p`) to reorder chunks
 - `p` maps old_idx → new_pos, `inv` maps new_pos → old_idx
 
+### Wigner D mismatch
+- Correct transformation: `D_real = real(Q^T @ D_c @ Q^*)` (NOT `Q @ D_c @ Q^H`)
+- Discovered empirically by cross-validation against e3nn torch
+
 ## Git Workflow
 
-- `.gitignore` includes `DEVELOPMENT.md` (DO NOT COMMIT)
-- `TODO.md` is committed (public task list)
+- `DEVELOPMENT.md` and `TODO.md` are removed (all versions complete)
+- `test_cross_deeph.py` is gitignored (references DeepH-pack paths)
 - No secrets or internal references in committed files

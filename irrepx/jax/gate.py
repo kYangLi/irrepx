@@ -5,17 +5,11 @@ import jax.numpy as jnp
 
 from irrepx.irreps import Irrep
 from irrepx.jax.irreps_array import IrrepsArray, concatenate, from_chunks
+from irrepx.normalize import normalize_function
 
 
 def _soft_odd(x):
     return x * (1.0 - jnp.exp(-(x**2)))
-
-
-def _normalize_function(f, n_samples=1_000_000):
-    key = jax.random.PRNGKey(0)
-    x = jax.random.normal(key, (n_samples,))
-    c = jnp.sqrt(jnp.mean(f(x) ** 2))
-    return lambda x: f(x) / c
 
 
 def scalar_activation(input, *, even_act=None, odd_act=None, normalize_act=True):
@@ -24,8 +18,8 @@ def scalar_activation(input, *, even_act=None, odd_act=None, normalize_act=True)
     if odd_act is None:
         odd_act = _soft_odd
     if normalize_act:
-        even_act = _normalize_function(even_act)
-        odd_act = _normalize_function(odd_act)
+        even_act = normalize_function(even_act)
+        odd_act = normalize_function(odd_act)
 
     if input.irreps.num_irreps == 0:
         return input

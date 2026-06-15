@@ -1,4 +1,4 @@
-.PHONY: clean install test build help
+.PHONY: clean install test tests build help lint
 
 VENV := .venv
 .DEFAULT_GOAL := help
@@ -10,7 +10,8 @@ help:
 	@echo "  install       Create .venv, install in editable mode (no JAX)"
 	@echo "  install-jax   Create .venv, install in editable mode (with JAX)"
 	@echo "  install-test  Create .venv, install in editable mode with all test deps (jax + e3nn-jax + e3nn)"
-	@echo "  test          Run all tests"
+	@echo "  test          Run standard tests"
+	@echo "  tests         Run all tests including cross-deeph benchmark"
 	@echo "  build         Build distribution wheel"
 	@echo "  lint          Run ruff check + black"
 	@echo "  clean         Remove build artifacts and cache files"
@@ -41,10 +42,10 @@ install-test:
 	uv pip install -e ".[test]"
 
 test:
-	.venv/bin/python -m pytest tests
+	.venv/bin/python -m pytest tests --ignore=tests/test_cross_deeph.py -q
 
-test-jax:
-	.venv/bin/python -m pytest tests
+tests:
+	.venv/bin/python -m pytest tests -q
 
 lint:
 	.venv/bin/ruff check .

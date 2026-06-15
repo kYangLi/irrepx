@@ -18,7 +18,7 @@ def cli():
 )
 @click.option("-o", "--output", default="cg.h5", show_default=True, help="Output H5 file path.")
 def cg(lmax, include_soc, output):
-    """Export Clebsch-Gordan coefficients to HDF5 (DeepH-pack COO format).
+    """Export Clebsch-Gordan coefficients to HDF5 (sparse COO format).
 
     Without --include-soc: generates all CG(l1,l2,l_out) for l1,l2 ≤ lmax.
     With --include-soc: also generates CG(1, l, l_out) for l = lmax+1 .. 2*lmax.
@@ -35,7 +35,7 @@ def cg(lmax, include_soc, output):
 @click.option("--lmax", type=int, default=13, help="Maximum angular momentum l.")
 @click.option("-o", "--output", default="jd.h5", show_default=True, help="Output H5 file path.")
 def jd(lmax, output):
-    """Export JD seed matrices to HDF5 (DeepH-pack dense format)."""
+    """Export JD seed matrices to HDF5 (dense format)."""
     from irrepx.io import export_jd_h5
 
     export_jd_h5(output, lmax=lmax)

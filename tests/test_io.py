@@ -1,4 +1,4 @@
-"""Tests for irrepx.io: HDF5 export at DeepH-pack-compatible formats."""
+"""Tests for irrepx.io: HDF5 export in standard sparse-COO / dense formats."""
 
 import os
 import tempfile

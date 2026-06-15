@@ -207,7 +207,7 @@ def jd_seed(l: int) -> np.ndarray:  # noqa: E741
     .. math::
         J_{\text{seed}}(l) = D^l(\pi/2, -\pi/2, -\pi/2)
 
-    Each row ``m`` is multiplied by ``(-1)^m`` (DeepH-pack convention).
+    Each row ``m`` is multiplied by ``(-1)^m`` per the standard convention.
     Values below 1e-10 are set to zero.
 
     Returns:

@@ -1,4 +1,4 @@
-"""HDF5 persistence for irrepx constants (DeepH-pack compatible formats).
+"""HDF5 persistence for irrepx constants.
 
 Usage::
 
@@ -26,7 +26,7 @@ def _require_h5py():
 
 
 def export_cg_h5(path: str, lmax: int = 7, soc_lmax: int | None = None) -> None:
-    r"""Export CG coefficients in DeepH-pack sparse COO format.
+    r"""Export CG coefficients in sparse COO format.
 
     HDF5 structure::
 
@@ -74,7 +74,7 @@ def export_cg_h5(path: str, lmax: int = 7, soc_lmax: int | None = None) -> None:
 
 
 def export_jd_h5(path: str, lmax: int = 13) -> None:
-    r"""Export JD seed matrices in DeepH-pack dense format.
+    r"""Export JD seed matrices in dense format.
 
     HDF5 structure::
 
@@ -84,7 +84,7 @@ def export_jd_h5(path: str, lmax: int = 13) -> None:
 
     Args:
         path: output HDF5 file path.
-        lmax: maximum l (default 13, matching DeepH-pack).
+        lmax: maximum l (default 13).
     """
     h5py = _require_h5py()
     from irrepx.constants import jd_seed
@@ -96,7 +96,7 @@ def export_jd_h5(path: str, lmax: int = 13) -> None:
 
 
 def export_sb_roots_h5(path: str, lmax: int = 13, num_roots: int = 1000) -> None:
-    r"""Export spherical Bessel roots in DeepH-pack dense format.
+    r"""Export spherical Bessel roots in dense format.
 
     HDF5 structure::
 
@@ -105,7 +105,7 @@ def export_sb_roots_h5(path: str, lmax: int = 13, num_roots: int = 1000) -> None
     Args:
         path: output HDF5 file path.
         lmax: maximum l.
-        num_roots: number of roots per l (default 1000, matching DeepH-pack).
+        num_roots: number of roots per l (default 1000).
     """
     h5py = _require_h5py()
 

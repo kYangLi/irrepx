@@ -46,7 +46,7 @@ tests/
 ├── test_normalize.py        # normalize_function
 ├── test_s2grid.py           # SphericalSignal, to/from_s2grid
 ├── test_bessel.py           # spherical Bessel root accuracy
-└── test_cross_deeph.py      # gitignored: cross-validation vs DeepH-pack H5 files
+└── test_cross_deeph.py      # gitignored: cross-validation vs reference H5 files
 ```
 
 **Total**: 163 tests, all passing.
@@ -55,7 +55,7 @@ tests/
 
 - **Cross-validation**: spherical_harmonics, tensor_product, gate, wigner_D validated against e3nn-jax/e3nn-torch (diff < 1e-5)
 - **JIT + grad**: all 19 JAX functions verified under `@jax.jit` + `@jax.grad`
-- **DeepH-pack**: `test_cross_deeph.py` validates H5 export against DeepH-pack originals (gitignored)
+- **internal project**: `test_cross_deeph.py` validates H5 export against reference originals (gitignored)
 - **Sharding**: pytree device preservation, from_chunks device
 
 ## Code Conventions
@@ -97,5 +97,5 @@ tests/
 ## Git Workflow
 
 - `DEVELOPMENT.md` and `TODO.md` are removed (all versions complete)
-- `test_cross_deeph.py` is gitignored (references DeepH-pack paths)
+- `test_cross_deeph.py` is gitignored (references benchmark file paths)
 - No secrets or internal references in committed files

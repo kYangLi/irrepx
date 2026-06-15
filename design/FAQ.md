@@ -76,7 +76,7 @@ when transforming rank-2 tensors (Wigner D) vs. rank-1 (spherical harmonics).
 | Basis | Convention | Used by |
 |-------|-----------|---------|
 | **Complex** | Standard angular momentum eigenstates `|l,m⟩`, ordered `m = -l,…,l` | `exp(-iα·Lz)` etc. |
-| **Real** | Real spherical harmonics, ordered as e3nn convention | `e3nn.o3.wigner_D`, DeepH-pack JD |
+| **Real** | Real spherical harmonics, ordered as e3nn convention | `e3nn.o3.wigner_D`, standard JD convention |
 
 #### The Q Matrix
 
@@ -136,13 +136,13 @@ for m_idx in range(2*l+1):
 D[np.abs(D) < 1e-10] = 0.0
 ```
 
-This matches DeepH-pack's `jd.h5` convention. Values below 1e-10 are zeroed.
+This matches the standard JD convention. Values below 1e-10 are zeroed.
 Note: this row scaling breaks column orthonormality — JD seed is NOT a pure
 rotation matrix.
 
 ### CG Export Format
 
-The `export_cg_h5` function writes DeepH-pack-compatible sparse COO format:
+The `export_cg_h5` function writes standard sparse COO format:
 
 ```
 /l1={l1},l2={l2}/

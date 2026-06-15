@@ -28,7 +28,7 @@ irrepx/
 ├── irreps.py                  # Irrep, MulIrrep, Irreps + align_two_irreps
 ├── constants.py               # clebsch_gordan, wigner_D, jd_seed, SPHERICAL_BESSEL_ROOTS
 ├── normalize.py               # normalize_function (inverse-ERF normalspace)
-├── io.py                      # H5 export/import (DeepH-pack compatible), CGCache
+├── io.py                      # H5 export/import (standard formats), CGCache
 ├── cli.py                     # click CLI: irrepx cg/jd/sb
 └── jax/
     ├── __init__.py             # Re-exports all JAX symbols
@@ -74,7 +74,7 @@ To avoid JIT trace explosion. Uses `jax.scipy.special.lpmn_values` with `jnp.cli
 ### 4. sort() uses chunk reordering, not jnp.split
 Original implementation used `jnp.split` with traced indices — JIT-incompatible. Replaced with `from_chunks(irreps, [self.chunks[i] for i in inv], ...)` for static chunk lists.
 
-### 5. H5 export matches DeepH-pack conventions
+### 5. H5 export matches standard conventions
 CG exported as sparse COO (`/l1={i},l2={j}` groups), JD as dense (`/l={l}` matrices with `(-1)^m` row scaling). Values use `np.nonzero` (exact zero) for CG, `|val|<1e-10` zeroing for JD.
 
 ### 6. normalize_function uses inverse-ERF normalspace
@@ -101,5 +101,5 @@ Deterministic normal-quantile spacing (1,000,001 nodes). No PRNGKey. Matches e3n
 - `irrepx/jax/irreps_array.py:138` — sort() (static `from_chunks`)
 - `irrepx/jax/s2grid.py:245` — to_s2grid
 - `irrepx/jax/s2grid.py:285` — from_s2grid
-- `irrepx/io.py:28` — export_cg_h5 (DeepH-pack COO)
-- `irrepx/io.py:72` — export_jd_h5 (DeepH-pack dense)
+- `irrepx/io.py:28` — export_cg_h5 (standard COO)
+- `irrepx/io.py:72` — export_jd_h5 (standard dense)

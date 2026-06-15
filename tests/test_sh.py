@@ -5,6 +5,7 @@ jax = pytest.importorskip("jax")
 jnp = jax.numpy
 ej = pytest.importorskip("e3nn_jax")
 
+from irrepx import Irreps
 from irrepx._jax.irreps_array import IrrepsArray
 from irrepx._jax.spherical_harmonics import spherical_harmonics
 
@@ -115,3 +116,21 @@ def test_legendre_normalize_false(rng_key):
     ref = ej.spherical_harmonics(10, ej.IrrepsArray("1o", x), normalize=False)
     diff = float(jnp.max(jnp.abs(our.array - ref.array)))
     assert diff < 1e-4, f"normalize=False diff={diff}"
+
+
+def test_multiplicity_output_legendre(rng_key):
+    x = jax.random.normal(rng_key, (2, 3))
+    xa = IrrepsArray("1o", x)
+    ours = spherical_harmonics(Irreps("3x0e+3x1o+2x2e"), xa, normalize=True, normalization="component")
+    ref = ej.spherical_harmonics(ej.Irreps("3x0e+3x1o+2x2e"), ej.IrrepsArray("1o", x), normalize=True, normalization="component")
+    diff = float(jnp.max(jnp.abs(ours.array - ref.array)))
+    assert diff < 5e-4, f"multiplicity legendre diff={diff}"
+
+
+def test_multiplicity_output_recursive(rng_key):
+    x = jax.random.normal(rng_key, (2, 3))
+    xa = IrrepsArray("1o", x)
+    ours = spherical_harmonics(Irreps("2x0e+2x1o"), xa, normalize=True, normalization="component")
+    ref = ej.spherical_harmonics(ej.Irreps("2x0e+2x1o"), ej.IrrepsArray("1o", x), normalize=True, normalization="component")
+    diff = float(jnp.max(jnp.abs(ours.array - ref.array)))
+    assert diff < 5e-4, f"multiplicity recursive diff={diff}"

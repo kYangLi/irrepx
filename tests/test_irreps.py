@@ -1,4 +1,6 @@
-from irrepx import Irrep, Irreps
+import pytest
+
+from irrepx import Irrep, Irreps, MulIrrep
 
 
 class TestIrrep:
@@ -99,3 +101,32 @@ class TestIrreps:
     def test_add(self):
         x = Irreps("1e") + Irreps("2e")
         assert x == Irreps("1x1e+1x2e")
+
+
+class TestPytree:
+    def test_irrep_is_leaf(self):
+        pytest.importorskip("jax")
+        import jax
+
+        leaves, treedef = jax.tree_util.tree_flatten(Irrep("2e"))
+        assert leaves == []
+        restored = jax.tree_util.tree_unflatten(treedef, [])
+        assert restored == Irrep("2e")
+
+    def test_mulirrep_is_leaf(self):
+        pytest.importorskip("jax")
+        import jax
+
+        leaves, treedef = jax.tree_util.tree_flatten(MulIrrep(3, Irrep("2e")))
+        assert leaves == []
+        restored = jax.tree_util.tree_unflatten(treedef, [])
+        assert restored == MulIrrep(3, Irrep("2e"))
+
+    def test_irreps_is_leaf(self):
+        pytest.importorskip("jax")
+        import jax
+
+        leaves, treedef = jax.tree_util.tree_flatten(Irreps("2x0e+1x1o"))
+        assert leaves == []
+        restored = jax.tree_util.tree_unflatten(treedef, [])
+        assert restored == Irreps("2x0e+1x1o")

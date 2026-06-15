@@ -870,3 +870,28 @@ def tensor_product(
     if regroup_output:
         result = result.regroup()
     return result
+
+
+# ---------------------------------------------------------------------------
+# JAX pytree registration — opaque leaves (light mode safe via try/except)
+# ---------------------------------------------------------------------------
+try:
+    import jax
+
+    jax.tree_util.register_pytree_node(
+        Irrep,
+        lambda ir: ((), ir),
+        lambda ir, _: ir,
+    )
+    jax.tree_util.register_pytree_node(
+        MulIrrep,
+        lambda mulir: ((), mulir),
+        lambda mulir, _: mulir,
+    )
+    jax.tree_util.register_pytree_node(
+        Irreps,
+        lambda irreps: ((), irreps),
+        lambda irreps, _: irreps,
+    )
+except ImportError:
+    pass

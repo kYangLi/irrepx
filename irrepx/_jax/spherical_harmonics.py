@@ -163,13 +163,31 @@ def spherical_harmonics(
 
     if lmax > 8:
         all_sh = _legendre_spherical_harmonics(lmax, x, normalize, normalization)
-        return_ls = [mul_ir.ir.l for mul_ir in irreps_out]
-        chunks = [all_sh[..., l**2 : l**2 + 2 * l + 1] for l in return_ls if l <= lmax]
+        chunks = []
+        for mul, ir in irreps_out:
+            l = ir.l
+            if l <= lmax:
+                y = all_sh[..., l**2 : l**2 + 2 * l + 1]
+                if mul != 1:
+                    y = jnp.repeat(y[..., None, :], mul, axis=-2)
+                else:
+                    y = y[..., None, :]
+                y = y.reshape(y.shape[:-2] + (mul * (2 * l + 1),))
+                chunks.append(y)
         result = jnp.concatenate(chunks, axis=-1)
         return IrrepsArray(irreps_out, result)
 
     context = _recursive_spherical_harmonics(lmax, x, normalize, normalization)
-    return_ls = [mul_ir.ir.l for mul_ir in irreps_out]
-    chunks = [context[l] for l in return_ls if l <= lmax]
+    chunks = []
+    for mul, ir in irreps_out:
+        l = ir.l
+        if l <= lmax:
+            y = context[l]
+            if mul != 1:
+                y = jnp.repeat(y[..., None, :], mul, axis=-2)
+            else:
+                y = y[..., None, :]
+            y = y.reshape(y.shape[:-2] + (mul * (2 * l + 1),))
+            chunks.append(y)
     result = jnp.concatenate(chunks, axis=-1)
     return IrrepsArray(irreps_out, result)

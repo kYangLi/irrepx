@@ -77,9 +77,9 @@ class TestBessel:
                 assert roots[ell][i] < roots[ell][i + 1]
 
     def test_roots_count(self):
-        roots = compute_sb_roots(14)
+        roots = compute_sb_roots(14, num_roots=256)
         for ell in range(15):
-            assert len(roots[ell]) == 15
+            assert len(roots[ell]) == 256
 
     def test_roots_l_zero_exact(self):
         roots = compute_sb_roots(0)

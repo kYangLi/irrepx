@@ -55,7 +55,8 @@ def _cg_cap_from_data(data: dict) -> int:
 @click.option("--cg-lmax", type=int, default=None, help="Rebuild CG table with given lmax.")
 @click.option("--jd-lmax", type=int, default=None, help="Rebuild JD table with given lmax.")
 @click.option("--sb-lmax", type=int, default=None, help="Rebuild SB roots table with given lmax.")
-def update(cg_lmax, jd_lmax, sb_lmax):
+@click.option("--sb-num-roots", type=int, default=1000, help="Number of roots per l (min 256).")
+def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots):
     """Rebuild precomputed tables with larger lmax.
 
     Tries to write into site-packages first.  If that directory is
@@ -77,7 +78,7 @@ def update(cg_lmax, jd_lmax, sb_lmax):
         _build_jd(target, jd_lmax)
         any_built = True
     if sb_lmax is not None:
-        _build_sb(target, sb_lmax)
+        _build_sb(target, sb_lmax, num_roots=sb_num_roots)
         any_built = True
 
     if not any_built:
@@ -132,12 +133,12 @@ def _build_jd(target: Path, lmax: int):
     click.echo(f"JD: {out} (lmax={lmax}, {len(data)} keys)")
 
 
-def _build_sb(target: Path, lmax: int):
+def _build_sb(target: Path, lmax: int, num_roots: int = 1000):
     import numpy as np
 
     from irrepx._constants._compute import compute_sb_roots
 
-    roots = compute_sb_roots(lmax)
+    roots = compute_sb_roots(lmax, num_roots=num_roots)
     data = {f"l={ell}": roots[ell] for ell in range(lmax + 1)}
     out = target / "sb_root.npz"
     np.savez_compressed(out, **data)

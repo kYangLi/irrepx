@@ -220,7 +220,7 @@ def jd_seed(l: int) -> np.ndarray:  # noqa: E741
     return D
 
 
-def compute_sb_roots(lmax: int, num_roots: int = 15) -> list[np.ndarray]:
+def compute_sb_roots(lmax: int, num_roots: int = 1000) -> list[np.ndarray]:
     r"""Compute spherical Bessel roots :math:`j_l(x) = 0`.
 
     Uses scipy's Newton solver with a guaranteed-convergence initial guess
@@ -228,11 +228,16 @@ def compute_sb_roots(lmax: int, num_roots: int = 15) -> list[np.ndarray]:
 
     Args:
         lmax: maximum :math:`\ell`.
-        num_roots: number of roots per :math:`\ell` (default 15).
+        num_roots: number of roots per :math:`\ell` (default 1000, min 256).
 
     Returns:
         List of 1-D float64 arrays, ``roots[l]`` has length *num_roots*.
+
+    Raises:
+        ValueError: *num_roots* < 256.
     """
+    if num_roots < 256:
+        raise ValueError(f"num_roots must be >= 256, got {num_roots}")
     out = []
     for ell in range(lmax + 1):
         roots = []

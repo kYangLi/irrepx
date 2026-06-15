@@ -7,11 +7,10 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install       Create .venv, install in editable mode (light mode, no JAX)"
-	@echo "  install-jax   Create .venv, install in editable mode (full mode, with JAX)"
+	@echo "  install       Create .venv, install in editable mode (no JAX)"
+	@echo "  install-jax   Create .venv, install in editable mode (with JAX)"
 	@echo "  install-test  Create .venv, install in editable mode with all test deps (jax + e3nn-jax + e3nn)"
-	@echo "  test          Run all tests (light mode)"
-	@echo "  test-jax      Run all tests (full mode, with JAX)"
+	@echo "  test          Run all tests"
 	@echo "  build         Build distribution wheel"
 	@echo "  lint          Run ruff check + black"
 	@echo "  clean         Remove build artifacts and cache files"
@@ -22,7 +21,7 @@ install:
 		echo "Creating virtual environment with uv..."; \
 		uv venv; \
 	fi
-	@echo "Installing package in editable mode with dev dependencies (light mode)..."
+	@echo "Installing package in editable mode with dev dependencies (no JAX)..."
 	uv pip install -e ".[dev]"
 
 install-jax:
@@ -30,7 +29,7 @@ install-jax:
 		echo "Creating virtual environment with uv..."; \
 		uv venv; \
 	fi
-	@echo "Installing package in editable mode with dev + jax dependencies (full mode)..."
+	@echo "Installing package in editable mode with dev + jax dependencies..."
 	uv pip install -e ".[dev,jax]"
 
 install-test:
@@ -42,14 +41,14 @@ install-test:
 	uv pip install -e ".[test]"
 
 test:
-	pytest tests
+	.venv/bin/python -m pytest tests
 
 test-jax:
-	pytest tests
+	.venv/bin/python -m pytest tests
 
 lint:
-	ruff check .
-	black --check .
+	.venv/bin/ruff check .
+	.venv/bin/black --check .
 
 build:
 	uv build --wheel -o dist ./

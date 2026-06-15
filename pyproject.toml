@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "irrepx"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     {name = "DeepH team", email = "deeph-pack@outlook.com"},
 ]
@@ -27,7 +27,12 @@ classifiers = [
 ]
 
 requires-python = ">=3.12,<3.15"
-dependencies = []
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "click>=8.0",
+    "h5py>=3.0",
+]
 
 [project.optional-dependencies]
 jax = ["jax==0.9.2"]
@@ -44,6 +49,9 @@ test = [
     "e3nn-jax>=0.21.0",
     "e3nn>=0.5.0",
 ]
+
+[project.scripts]
+irrepx = "irrepx.cli:cli"
 
 [project.urls]
 Homepage = "https://github.com/kYangLi/irrepx"

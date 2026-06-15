@@ -1,7 +1,7 @@
 # FAQ
 
 **Status**: ✅ Maintained
-**Last Updated**: 2026-06-14
+**Last Updated**: 2026-06-15
 
 ---
 
@@ -41,26 +41,14 @@ Expected when CUDA-enabled jaxlib is not installed. CPU mode works fine for test
 
 ## Gate Behavior
 
-### Q: Why doesn't irrepx's gate match e3nn-jax's gate?
-
-irrepx's gate follows the DEV spec:
-- First irrep must be 0e
-- Gate scalars: sigmoid
-- Info scalars: silu
-
-e3nn-jax's gate uses:
-- even_act: gelu, odd_act: soft_odd (normalized)
-- even_gate_act: sigmoid, odd_gate_act: tanh
-- Gate scalars are the LAST scalars (not first)
-- Supports 0o gate scalars that flip parity
-
 ### Q: How are gate scalars allocated?
 
-First `MulIrrep` in `input.irreps` is 0e. Its multiplicity is consumed left-to-right:
-- Each l>0 irrep gets `mul` gate scalars (one per multiplicity)
-- Remaining scalars are "info" scalars
-
-Example: `"5x0e + 1x1o + 2x2e"` → gate: 3 scalars (1+2), info: 2 scalars
+Gate scalars are the **rightmost** scalars in the input.
+The number of gate scalars equals `vectors.irreps.num_irreps` (sum of multiplicities
+of all non-scalar irreps).  Extra scalars (left side) are scalar-activated separately.
+Gate scalars go through gate activations (sigmoid by default) and multiply
+the non-scalar features elementwise via `elementwise_tensor_product`.
+Supports 0o gate scalars that flip parity of gated irreps.""
 
 ## Package Design
 
@@ -76,15 +64,116 @@ When `irrepx.IrrepsArray` is accessed:
 2. Imports `irrepx.jax` and returns the symbol
 3. If import fails (no JAX), raises helpful error message
 
+## Wigner D / Q-Matrix
+
+### Q: Why did the Wigner D implementation fail to match e3nn on the first attempt?
+
+The fundamental issue is the **direction of the Q basis-change matrix**
+when transforming rank-2 tensors (Wigner D) vs. rank-1 (spherical harmonics).
+
+#### Two Bases
+
+| Basis | Convention | Used by |
+|-------|-----------|---------|
+| **Complex** | Standard angular momentum eigenstates `|l,m⟩`, ordered `m = -l,…,l` | `exp(-iα·Lz)` etc. |
+| **Real** | Real spherical harmonics, ordered as e3nn convention | `e3nn.o3.wigner_D`, DeepH-pack JD |
+
+#### The Q Matrix
+
+`Q` maps from **complex → real**:
+
+```
+[Y_real] = Q @ [Y_complex]
+```
+
+For a **rank-1** object (spherical harmonics), the transformation is `Y_r = Q @ Y_c`.
+
+For a **rank-2** object (Wigner D matrix acting on spherical harmonics):
+
+```
+Y'_real = D_r @ Y_real
+        = Q @ Y'_complex = Q @ D_c @ Y_complex
+        = Q @ D_c @ (Q_⁻¹ @ Y_real)
+```
+
+So `D_r = Q @ D_c @ Q_⁻¹`. If Q is unitary, `Q_⁻¹ = Q^H = conj(Q.T)`.
+
+#### The Mistake
+
+The initial attempt used `D_r = Q @ D_c @ Q^H`. This produces the WRONG result
+(diff ≈ 0.6 vs e3nn torch). The reason is that **Q is not exactly the correct
+unitary for this purpose** — the `(-1j)^l` phase factor and the specific
+ordering of the real basis create a subtle indexing asymmetry.
+
+#### The Correct Formula (discovered empirically)
+
+```
+D_real = real( Q^T @ D_complex @ Q^* )
+```
+
+Where:
+- `Q^T`: transpose of Q (no conjugation)
+- `Q^*`: complex conjugate of Q (no transpose)
+- `D_complex = exp(-iα·Lz) @ exp(-iβ·Ly) @ exp(-iγ·Lz)` with standard Ly/Lz
+
+Validated against `e3nn.o3.wigner_D` with diff < 1e-5 (limited by `scipy.linalg.expm` float64 precision).
+
+#### Lesson
+
+For CG coefficients (rank-3), the einsum `Q1 @ Q2 @ conj(Q3.T) @ C_c` works correctly.
+But the same pattern does NOT generalize to rank-2 Wigner D. The correct
+transformation must be determined by numerical cross-validation against a
+reference implementation (e3nn torch).
+
+#### JD Seed Convention
+
+The JD seed is `wigner_D(l, π/2, -π/2, -π/2)` with **row scaling** by `(-1)^m`:
+
+```python
+D = wigner_D(l, π/2, -π/2, -π/2)
+for m_idx in range(2*l+1):
+    D[m_idx] *= (-1) ** (m_idx - l)   # row scaling: m = m_idx - l
+D[np.abs(D) < 1e-10] = 0.0
+```
+
+This matches DeepH-pack's `jd.h5` convention. Values below 1e-10 are zeroed.
+Note: this row scaling breaks column orthonormality — JD seed is NOT a pure
+rotation matrix.
+
+### CG Export Format
+
+The `export_cg_h5` function writes DeepH-pack-compatible sparse COO format:
+
+```
+/l1={l1},l2={l2}/
+    coo_l1     int64  (N_nz,)
+    coo_l2     int64  (N_nz,)
+    coo_l      int64  (N_nz,)   ← global column across all output l
+    entries    float64 (N_nz,)  ← CG × √(2l+1)
+```
+
+Values below 1e-12 are dropped. To reconstruct a dense CG tensor:
+
+```
+cg_dense = zeros(2·l1+1, 2·l2+1, Σ(2·l+1))
+cg_dense[coo_l1, coo_l2, coo_l] = entries
+cg_dense /= √(2·l3+1)  for the specific l3 slice
+```
+
+The `CGCache` class handles this automatically.
+
 ## Tasks In Progress
 
-See `../TODO.md` for detailed v0.1.0 task list.
+### v0.1.0 ✅
+### v0.2.0 ✅
 
-### v0.2.0 (planned)
-- `wigner_D` — Wigner D matrices via angular momentum generators
-- `jd_seed` — JD seed rotation matrix
-- `SPHERICAL_BESSEL_ROOTS` — roots of j_l(x) = 0
+- `wigner_D` — Wigner D matrices (ZYZ, complex basis + Q^T D Q* real transform)
+- `jd_seed` — JD seed (DeepH-pack convention: (-1)^m row scale + zeroing)
+- `SPHERICAL_BESSEL_ROOTS` — roots of j_l(x)=0 (scipy newton)
+- `export_cg_h5` / `export_jd_h5` / `export_sb_roots_h5` — H5 constant exports
+- `CGCache` — fast H5-to-dense loading with LRU cache
 
 ### v0.3.0 (planned)
+
 - `normalize_function` — normalize activation functions
 - `to_s2grid` / `from_s2grid` — S² grid transforms (optional)

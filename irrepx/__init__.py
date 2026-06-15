@@ -1,5 +1,5 @@
 from irrepx._version import __version__
-from irrepx.constants import clebsch_gordan
+from irrepx.constants import SPHERICAL_BESSEL_ROOTS, clebsch_gordan, jd_seed, wigner_D
 from irrepx.irreps import Irrep, MulIrrep, Irreps
 
 __all__ = [
@@ -8,6 +8,9 @@ __all__ = [
     "MulIrrep",
     "Irreps",
     "clebsch_gordan",
+    "wigner_D",
+    "jd_seed",
+    "SPHERICAL_BESSEL_ROOTS",
 ]
 
 _JAX_SYMBOLS = {

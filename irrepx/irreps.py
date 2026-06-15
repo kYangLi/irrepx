@@ -1,8 +1,7 @@
 """
 Irreducible representations of O(3) for symmetry-aware neural networks.
 
-A pure-Python implementation of O(3) irreducible representations,
-inspired by and API-compatible with e3nn-jax's Irrep/Irreps classes.
+A pure-Python implementation of O(3) irreducible representations.
 """
 
 import collections

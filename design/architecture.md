@@ -1,50 +1,48 @@
 # Architecture
 
-**Status**: ✅ Implemented (v0.3.0)
+**Status**: ✅ Implemented (v0.4.0)
 **Last Updated**: 2026-06-15
 
 ---
 
-## Problem Statement
-
-e3nn-jax is no longer maintained. irrepx replaces its core O(3) irreducible
-representations data structures and computation with a minimal, self-maintained
-library — GPL-3.0 licensed, publicly released.
-
 ## Design Goals
 
-- **Core deps: numpy, scipy, click, h5py** — universally available, no JAX required for light mode
+- **Core deps: numpy, scipy, click** — universally available, no JAX required for light mode
 - **JAX optional** — computation functions require `pip install irrepx[jax]`
-- **Drop-in API** — `import irrepx` mirrors e3nn-jax's core API
+- **Drop-in API** — `import irrepx` mirrors the standard O(3) irreps convention
 - **Maintainable** — modular design, all JIT-compatible, autodiff verified
-- **Cached constants** — CG, JD, SO(3) generators cached via `@functools.cache`
+- **Lazy imports** — symbols loaded on first use, light mode imports zero dependencies beyond numpy
 
-## Package Structure (v0.3.0)
+## Package Structure (v0.4.0)
 
 ```
 irrepx/
-├── __init__.py                # Dual-mode lazy import (__getattr__)
-├── _version.py                # read from pyproject.toml via importlib.metadata
-├── irreps.py                  # Irrep, MulIrrep, Irreps + align_two_irreps
-├── constants.py               # clebsch_gordan, wigner_D, jd_seed, SPHERICAL_BESSEL_ROOTS
-├── normalize.py               # normalize_function (inverse-ERF normalspace)
-├── io.py                      # H5 export/import (standard formats), CGCache
-├── cli.py                     # click CLI: irrepx cg/jd/sb
-└── jax/
-    ├── __init__.py             # Re-exports all JAX symbols
-    ├── irreps_array.py         # IrrepsArray, from_chunks, concatenate, slice_by_mul, rechunk
-    ├── spherical_harmonics.py  # spherical_harmonics (recursive ≤8, legendre >8)
-    ├── tensor_product.py       # tensor_product, elementwise_tensor_product
-    ├── gate.py                 # gate, scalar_activation
-    └── s2grid.py               # SphericalSignal, to_s2grid, from_s2grid, s2_irreps
+├── __init__.py                 # Dual-mode lazy import (__getattr__)
+├── _version.py                 # read from pyproject.toml
+├── irreps.py                   # Irrep, MulIrrep, Irreps + tensor_product (Irreps-only)
+├── cli.py                      # click CLI: irrepx constants status/update
+├── _constants/
+│   ├── __init__.py             # load_cg, load_jd, load_sb_roots (lazy npz loaders)
+│   ├── _compute.py             # clebsch_gordan, jd_seed, wigner_D, compute_sb_roots
+│   ├── cg.npz                  # shipped precomputed CG coefficients
+│   ├── jd.npz                  # shipped precomputed JD seed matrices
+│   └── sb_root.npz             # shipped precomputed SB roots
+└── _jax/
+    ├── __init__.py
+    ├── irreps_array.py
+    ├── spherical_harmonics.py
+    ├── tensor_product.py
+    ├── gate.py
+    ├── normalize.py
+    └── s2grid.py
 ```
 
 ## Dual-Mode Strategy
 
 | Mode | Install | Provides |
 |------|---------|----------|
-| **Light** | `pip install irrepx` | Irrep, MulIrrep, Irreps, clebsch_gordan, wigner_D, jd_seed, SPHERICAL_BESSEL_ROOTS, normalize_function |
-| **Full** | `pip install irrepx[jax]` | Above + IrrepsArray, spherical_harmonics, tensor_product, gate, to_s2grid, from_s2grid, s2_irreps, SphericalSignal |
+| **Light** | `pip install irrepx` | Irrep, MulIrrep, Irreps, clebsch_gordan, wigner_D, jd_seed, compute_sb_roots, load_cg, load_jd, load_sb_roots |
+| **Full** | `pip install irrepx[jax]` | Above + IrrepsArray, spherical_harmonics, tensor_product, gate, to_s2grid, from_s2grid, s2_irreps, SphericalSignal, normalize_function |
 
 **Mechanism**: `irrepx/__init__.py` uses `__getattr__` for lazy import.
 If JAX is not installed, accessing JAX symbols raises `"requires JAX. Install with: pip install irrepx[jax]"`.
@@ -55,51 +53,71 @@ If JAX is not installed, accessing JAX symbols raises `"requires JAX. Install wi
 |--------|:---:|:---:|--------|
 | `Irrep`, `MulIrrep`, `Irreps` | ✅ | ✅ | Pure Python string algebra |
 | `clebsch_gordan`, `wigner_D`, `jd_seed` | ✅ | ✅ | numpy/scipy only |
-| `SPHERICAL_BESSEL_ROOTS` | ✅ | ✅ | scipy (import-time compute) |
+| `compute_sb_roots` | ✅ | ✅ | scipy (on-demand compute) |
+| `load_cg`, `load_jd`, `load_sb_roots` | ✅ | ✅ | numpy (npz I/O), lazy |
 | `normalize_function` | ✅ | ✅ | JAX but `ensure_compile_time_eval` |
 | `IrrepsArray`, SH, TP, gate | — | ✅ | Wraps `jax.Array` |
 | `to_s2grid`, `from_s2grid` | — | ✅ | Uses JAX ops + jax.numpy |
 
 ## Key Design Decisions
 
-### 1. CG constants in constants.py (pure numpy)
-`clebsch_gordan` uses Racah formula + real basis change, cached. JAX code converts via `jnp.asarray(cg)`.
+### 1. Precomputed tables ship as npz files
+CG, JD, and SB roots are expensive to compute but needed as bulk data by
+downstream consumers.  They are pre-computed, stored as npz files in
+`irrepx/_constants/`, and loaded lazily via `load_cg()` / `load_jd()` /
+`load_sb_roots()`.  The CLI command `irrepx constants update` regenerates
+these tables with a larger lmax when needed.
 
-### 2. Wigner D via complex-basis transformation
-`D_real = real(Q^T @ D_complex @ Q^*)` where Q is the complex→real basis change. Discovered empirically — the CG rank-3 einstein convention does NOT generalize to rank-2 Wigner D. Validated against e3nn torch (diff < 1e-5).
+For per-triplet CG access (used internally by spherical_harmonics and
+tensor_product), the computational function `clebsch_gordan(l1,l2,l3)`
+uses `@functools.cache` — first call computes, subsequent calls are
+instant.
 
-### 3. Legendre algorithm for l > 8
-To avoid JIT trace explosion. Uses `jax.scipy.special.lpmn_values` with `jnp.clip(x, -1, 1)` for NaN prevention. Lower l uses recursive CG decomposition.
+### 2. Strict lmax ceiling on loaders
+`load_cg` / `load_jd` / `load_sb_roots` raise `ValueError` if the
+requested lmax exceeds the shipped npz capacity.  The error message
+includes the exact CLI command to regenerate with a larger lmax.
+No silent fallback to on-the-fly computation.
 
-### 4. sort() uses chunk reordering, not jnp.split
-Original implementation used `jnp.split` with traced indices — JIT-incompatible. Replaced with `from_chunks(irreps, [self.chunks[i] for i in inv], ...)` for static chunk lists.
+### 3. CG via Racah formula + real basis change
+`clebsch_gordan` computes SU(2) complex CG via Racah's formula, then
+transforms to the real spherical harmonics basis via `Q1 @ Q2 @ conj(Q3.T) @ C_c`.
+Cached with `@functools.cache`.
 
-### 5. H5 export matches standard conventions
-CG exported as sparse COO (`/l1={i},l2={j}` groups), JD as dense (`/l={l}` matrices with `(-1)^m` row scaling). Values use `np.nonzero` (exact zero) for CG, `|val|<1e-10` zeroing for JD.
+### 4. Wigner D via complex-basis transformation
+`D_real = real(Q^T @ D_complex @ Q^*)` where Q is the complex→real basis change.
+The CG rank-3 convention does NOT generalize to rank-2 Wigner D — the correct
+transformation was determined empirically.
 
-### 6. normalize_function uses inverse-ERF normalspace
-Deterministic normal-quantile spacing (1,000,001 nodes). No PRNGKey. Matches e3nn-jax's `normalize_function`. Gauss-Hermite quadrature documented as alternative in file header.
+### 5. Legendre algorithm for l > 8
+To avoid JIT trace explosion. Uses `jax.scipy.special.lpmn_values` with
+`jnp.clip(x, -1, 1)` for NaN prevention. Lower l uses recursive CG decomposition.
+
+### 6. sort() uses chunk reordering, not jnp.split
+Uses `from_chunks(irreps, [self.chunks[i] for i in inv], ...)` for static chunk
+lists, avoiding JIT-incompatible traced indices.
+
+### 7. normalize_function uses inverse-ERF normalspace
+Deterministic normal-quantile spacing (1,000,001 nodes). No PRNGKey.
 
 ## Dependencies
 
 | Package | Required | Version | Purpose |
 |---------|:---:|---------|---------|
 | Python | Yes | >=3.12 | Runtime |
-| numpy | Yes | >=1.24 | Numerical arrays |
-| scipy | Yes | >=1.10 | Special functions, expm |
+| numpy | Yes | >=1.24 | Numerical arrays, npz I/O |
+| scipy | Yes | >=1.10 | Special functions, expm, newton |
 | click | Yes | >=8.0 | CLI |
-| h5py | Yes | >=3.0 | HDF5 I/O |
-| jax | Optional | ==0.9.2 | Full mode runtime |
+| jax | Optional | >=0.9.2 | Full mode runtime |
 
 ## References
 
-- `irrepx/__init__.py:30` — `__getattr__` lazy import
-- `irrepx/constants.py:84` — `clebsch_gordan` (cached)
-- `irrepx/constants.py:143` — `wigner_D` (Q^T @ D_c @ Q*)
+- `irrepx/__init__.py:1` — `__getattr__` lazy import
+- `irrepx/_constants/__init__.py:1` — `load_cg`, `load_jd`, `load_sb_roots`
+- `irrepx/_constants/_compute.py:85` — `clebsch_gordan` (cached)
+- `irrepx/_constants/_compute.py:150` — `wigner_D` (Q^T @ D_c @ Q*)
 - `irrepx/_jax/spherical_harmonics.py:63` — recursive SH (binary decomposition)
 - `irrepx/_jax/spherical_harmonics.py:93` — legendre SH (lpmn_values)
 - `irrepx/_jax/irreps_array.py:138` — sort() (static `from_chunks`)
 - `irrepx/_jax/s2grid.py:245` — to_s2grid
 - `irrepx/_jax/s2grid.py:285` — from_s2grid
-- `irrepx/io.py:28` — export_cg_h5 (standard COO)
-- `irrepx/io.py:72` — export_jd_h5 (standard dense)

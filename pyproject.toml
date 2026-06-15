@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "irrepx"
-version = "0.3.0"
+version = "0.4.0"
 authors = [
     {name = "DeepH team", email = "deeph-pack@outlook.com"},
 ]
@@ -31,7 +31,6 @@ dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "click>=8.0",
-    "h5py>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +65,9 @@ Issues = "https://github.com/kYangLi/irrepx/issues"
 [tool.setuptools]
 include-package-data = true
 
+[tool.setuptools.package-data]
+irrepx = ["_constants/*.npz"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["irrepx*"]
@@ -87,4 +89,5 @@ addopts = ["-v", "--tb=short", "--strict-markers"]
 markers = [
     "requires_jax: tests that need JAX installed",
     "requires_e3nn_jax: tests that need e3nn-jax installed for cross-validation",
+    "slow: tests that are comprehensive but slower",
 ]

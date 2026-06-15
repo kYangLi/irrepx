@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from irrepx.constants import clebsch_gordan
+from irrepx._constants._compute import clebsch_gordan
 
 
 @pytest.mark.requires_e3nn_jax

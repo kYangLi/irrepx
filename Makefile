@@ -10,8 +10,7 @@ help:
 	@echo "  install       Create .venv, install in editable mode (no JAX)"
 	@echo "  install-jax   Create .venv, install in editable mode (with JAX)"
 	@echo "  install-test  Create .venv, install in editable mode with all test deps (jax + e3nn-jax + e3nn)"
-	@echo "  test          Run standard tests"
-	@echo "  tests         Run all tests including cross-deeph benchmark"
+	@echo "  test          Run tests"
 	@echo "  build         Build distribution wheel"
 	@echo "  lint          Run ruff check + black"
 	@echo "  clean         Remove build artifacts and cache files"
@@ -42,9 +41,6 @@ install-test:
 	uv pip install -e ".[test]"
 
 test:
-	.venv/bin/python -m pytest tests --ignore=tests/test_cross_deeph.py -q
-
-tests:
 	.venv/bin/python -m pytest tests -q
 
 lint:

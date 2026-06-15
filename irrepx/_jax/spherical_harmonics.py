@@ -8,7 +8,7 @@ from jax import lax
 #   (1) use recursive CG for all l
 #   (2) implement Stratton recurrence for associated Legendre functions
 
-from irrepx.constants import clebsch_gordan
+from irrepx._constants._compute import clebsch_gordan
 from irrepx.irreps import Irreps
 from irrepx._jax.irreps_array import IrrepsArray
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from irrepx.constants import SPHERICAL_BESSEL_ROOTS, jd_seed, wigner_D
+from irrepx._constants._compute import compute_sb_roots, jd_seed, wigner_D
 
 
 class TestWignerD:
@@ -65,20 +65,23 @@ class TestBessel:
     def test_roots_accuracy(self):
         from scipy.special import spherical_jn
 
+        roots = compute_sb_roots(8)
         for ell in range(8):
-            for r in SPHERICAL_BESSEL_ROOTS[ell][:5]:
+            for r in roots[ell][:5]:
                 assert abs(spherical_jn(ell, r)) < 1e-8
 
     def test_roots_monotonic(self):
+        roots = compute_sb_roots(8)
         for ell in range(8):
-            roots = SPHERICAL_BESSEL_ROOTS[ell]
-            for i in range(len(roots) - 1):
-                assert roots[i] < roots[i + 1]
+            for i in range(len(roots[ell]) - 1):
+                assert roots[ell][i] < roots[ell][i + 1]
 
     def test_roots_count(self):
-        for ell in range(14):
-            assert len(SPHERICAL_BESSEL_ROOTS[ell]) == 15
+        roots = compute_sb_roots(14)
+        for ell in range(15):
+            assert len(roots[ell]) == 15
 
     def test_roots_l_zero_exact(self):
-        for i, r in enumerate(SPHERICAL_BESSEL_ROOTS[0][:5]):
+        roots = compute_sb_roots(0)
+        for i, r in enumerate(roots[0][:5]):
             assert abs(r - (i + 1) * np.pi) < 1e-10

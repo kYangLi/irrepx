@@ -1,6 +1,6 @@
 # Development Guide
 
-**Status**: ✅ Complete (v0.3.0)
+**Status**: ✅ Complete (v0.4.0)
 **Last Updated**: 2026-06-15
 
 ---
@@ -10,10 +10,10 @@
 ```bash
 make install        # base + dev (no JAX)
 make install-jax    # base + dev + JAX
-make install-test   # base + test deps (jax + e3nn-jax + e3nn)
+make install-test   # base + test deps (JAX + cross-validation)
 ```
 
-JAX is pinned to `==0.9.2` in `pyproject.toml`.
+JAX is pinned to `>=0.9.2` in `pyproject.toml`.
 
 ## Make Targets
 
@@ -21,11 +21,11 @@ JAX is pinned to `==0.9.2` in `pyproject.toml`.
 |--------|----------|
 | `make install` | Create `.venv`, install in editable mode (no JAX) |
 | `make install-jax` | As above + JAX |
-| `make install-test` | As above + JAX + e3nn-jax + e3nn (torch) for cross-validation |
+| `make install-test` | As above + JAX + cross-validation dependencies |
 | `make test` | Run pytest |
 | `make build` | Build distribution wheel |
 | `make lint` | ruff check + black |
-| `make clean` | Remove build artifacts and cache |
+| `make clean` | Remove build artifacts and cache files |
 | `make help` | Show all targets |
 
 ## Test Structure
@@ -34,28 +34,29 @@ JAX is pinned to `==0.9.2` in `pyproject.toml`.
 tests/
 ├── conftest.py              # pytest markers (requires_jax/requires_e3nn_jax), rng_key fixture
 ├── test_irreps.py           # Irrep, MulIrrep, Irreps
-├── test_constants.py        # clebsch_gordan vs e3nn-jax
+├── test_constants.py        # clebsch_gordan cross-validation
 ├── test_irreps_array.py     # IrrepsArray ops + structural ops
 ├── test_sh.py               # spherical_harmonics (recursive + legendre)
-├── test_tensor_product.py   # tp + ewtp vs e3nn-jax
-├── test_gate.py             # gate vs e3nn-jax
+├── test_tensor_product.py   # tp + ewtp cross-validation
+├── test_gate.py             # gate cross-validation
 ├── test_wigner.py           # wigner_D + jd_seed + bessel roots
-├── test_io.py               # H5 export/import roundtrip
 ├── test_jit.py              # JIT + autodiff for all JAX functions
 ├── test_sharding.py         # device placement preservation
-├── test_normalize.py        # normalize_function
+├── test_normalize.py        # normalize_function cross-validation
 ├── test_s2grid.py           # SphericalSignal, to/from_s2grid
 ├── test_bessel.py           # spherical Bessel root accuracy
-└── test_cross_deeph.py      # gitignored: cross-validation vs reference H5 files
+└── test_precomputed.py      # load_cg/load_jd/load_sb_roots cross-validation
 ```
 
-**Total**: 163 tests, all passing.
+**Total**: 171 tests, all passing.
 
 ### Test Strategy
 
-- **Cross-validation**: spherical_harmonics, tensor_product, gate, wigner_D validated against e3nn-jax/e3nn-torch (diff < 1e-5)
-- **JIT + grad**: all 19 JAX functions verified under `@jax.jit` + `@jax.grad`
-- **internal project**: `test_cross_deeph.py` validates H5 export against reference originals (gitignored)
+- **Cross-validation**: spherical_harmonics, tensor_product, gate, wigner_D,
+  normalize_function validated against reference implementations (diff < 1e-5)
+- **JIT + grad**: all JAX functions verified under `@jax.jit` + `@jax.grad`
+- **Precomputed tables**: load_cg/load_jd/load_sb_roots verified against
+  computational functions for every triplet/matrix/root
 - **Sharding**: pytree device preservation, from_chunks device
 
 ## Code Conventions
@@ -67,8 +68,8 @@ tests/
 
 ### Imports
 - stdlib first, then third-party, then irrepx internal
-- `irrepx/_jax/` modules import from `irrepx.constants` and `irrepx.irreps`
-- No circular imports between `jax/` submodules
+- `irrepx/_jax/` modules import from `irrepx._constants._compute` and `irrepx.irreps`
+- No circular imports between `_jax/` submodules
 
 ### Variable naming
 - `l` for angular momentum quantum number (`# noqa: E741`)
@@ -92,10 +93,4 @@ tests/
 
 ### Wigner D mismatch
 - Correct transformation: `D_real = real(Q^T @ D_c @ Q^*)` (NOT `Q @ D_c @ Q^H`)
-- Discovered empirically by cross-validation against e3nn torch
-
-## Git Workflow
-
-- `DEVELOPMENT.md` and `TODO.md` are removed (all versions complete)
-- `test_cross_deeph.py` is gitignored (references benchmark file paths)
-- No secrets or internal references in committed files
+- Determined empirically by cross-validation

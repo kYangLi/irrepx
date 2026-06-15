@@ -40,12 +40,34 @@ sh = spherical_harmonics([0, 1, 2], x, normalize=True)
 print(sh.irreps)  # 1x0e+1x1o+1x2e
 ```
 
-## CLI
+## Pre-computed constants
+
+irrepx ships pre-computed Clebsch-Gordan coefficients, JD seed matrices,
+and spherical Bessel roots as npz files.  These are loaded lazily on first access.
+
+```python
+from irrepx import load_cg, load_jd, load_sb_roots
+
+cg = load_cg()         # loads from cg.npz, lmax=7 by default
+cg = load_cg(lmax=5)   # subset up to lmax=5
+jd = load_jd()         # loads from jd.npz, lmax=13 by default
+sb = load_sb_roots()   # loads from sb_root.npz, lmax=13 by default
+```
+
+If the requested lmax exceeds the shipped tables, rebuild them with the CLI:
 
 ```bash
-irrepx cg --lmax 7 --include-soc -o cg.h5
-irrepx jd --lmax 13 -o jd.h5
-irrepx sb --lmax 13 -o sb.h5
+irrepx constants status
+irrepx constants update --cg-lmax 10 --jd-lmax 15 --sb-lmax 20
+```
+
+For per-triplet CG access (used internally by `spherical_harmonics` and
+`tensor_product`), use the computational function:
+
+```python
+from irrepx import clebsch_gordan
+
+cg = clebsch_gordan(1, 1, 2)   # returns dense (3, 3, 5) array
 ```
 
 ## License

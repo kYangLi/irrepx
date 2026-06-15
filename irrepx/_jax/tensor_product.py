@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import jax.numpy as jnp
 
-from irrepx.constants import clebsch_gordan
+from irrepx._constants._compute import clebsch_gordan
 from irrepx.irreps import Irrep, Irreps
 from irrepx._jax.irreps_array import IrrepsArray, from_chunks
 

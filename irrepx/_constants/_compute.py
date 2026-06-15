@@ -3,6 +3,8 @@ from math import factorial, sqrt
 
 import numpy as np
 import scipy.linalg
+from scipy.optimize import newton
+from scipy.special import spherical_jn
 
 
 def _su2_clebsch_gordan(j1: int, j2: int, j3: int) -> np.ndarray:
@@ -63,7 +65,7 @@ def _change_basis_real_to_complex(l: int) -> np.ndarray:  # noqa: E741
     """Standard complex-to-real spherical harmonics basis change matrix Q(l).
 
     Q(l)[m_real, m_complex] transforms complex-valued Y_{l,m} to real-valued Y^l_m.
-    The real convention is the standard one used by e3nn.
+    The real convention is the standard one for real spherical harmonics.
     """
     size = 2 * l + 1
     q = np.zeros((size, size), dtype=np.complex128)
@@ -106,12 +108,10 @@ def clebsch_gordan(l1: int, l2: int, l3: int) -> np.ndarray:
 
 
 def _su2_generators(l: int) -> tuple:  # noqa: E741
-    r"""SU(2) angular momentum generators (e3nn convention).
+    r"""SU(2) angular momentum generators.
 
     Returns tuple of three ``(2l+1, 2l+1)`` complex matrices: ``[J_x, J_y, J_z]``,
     such that rotation by angle ``θ`` is ``exp(θ J)``.
-
-    Order matches e3nn_jax ``su2_generators``.
     """
     m_up = np.arange(-l, l)
     raising = np.diag(-np.sqrt(l * (l + 1) - m_up * (m_up + 1)), k=-1)
@@ -220,25 +220,26 @@ def jd_seed(l: int) -> np.ndarray:  # noqa: E741
     return D
 
 
-L_MAX_BESSEL = 13
-_NUM_ROOTS = 15
+def compute_sb_roots(lmax: int, num_roots: int = 15) -> list[np.ndarray]:
+    r"""Compute spherical Bessel roots :math:`j_l(x) = 0`.
 
-_SPHERICAL_BESSEL_ROOTS: dict[int, list[float]] = {}
+    Uses scipy's Newton solver with a guaranteed-convergence initial guess
+    (:math:`\ell + \pi`).
 
-try:
-    from scipy.optimize import newton
-    from scipy.special import spherical_jn
+    Args:
+        lmax: maximum :math:`\ell`.
+        num_roots: number of roots per :math:`\ell` (default 15).
 
-    for _l in range(L_MAX_BESSEL + 1):
-        _roots = []
-        _guess = _l + np.pi
-        for _k in range(_NUM_ROOTS):
-            _r = newton(lambda x: spherical_jn(_l, x), _guess, tol=1e-12, maxiter=100)
-            _roots.append(float(_r))
-            _guess = _r + np.pi
-        _SPHERICAL_BESSEL_ROOTS[_l] = _roots
-except ImportError:
-    for _l in range(L_MAX_BESSEL + 1):
-        _SPHERICAL_BESSEL_ROOTS[_l] = []
-
-SPHERICAL_BESSEL_ROOTS = _SPHERICAL_BESSEL_ROOTS
+    Returns:
+        List of 1-D float64 arrays, ``roots[l]`` has length *num_roots*.
+    """
+    out = []
+    for ell in range(lmax + 1):
+        roots = []
+        guess = ell + np.pi
+        for _ in range(num_roots):
+            r = newton(lambda x: spherical_jn(ell, x), guess, tol=1e-12, maxiter=100)
+            roots.append(float(r))
+            guess = r + np.pi
+        out.append(np.array(roots, dtype=np.float64))
+    return out

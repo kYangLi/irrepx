@@ -1,4 +1,4 @@
-# irrepx
+<h1 align="center">irrepx</h1>
 
 <div align="center">
 

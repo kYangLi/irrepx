@@ -9,9 +9,9 @@
 [![GitHub Issues](https://img.shields.io/github/issues/kYangLi/irrepx.svg)](https://github.com/kYangLi/irrepx/issues)
 [![GitHub Stars](https://img.shields.io/github/stars/kYangLi/irrepx.svg?style=social)](https://github.com/kYangLi/irrepx/stargazers)
 
-</div>
-
 *Minimal O(3) irreducible representations with optional JAX support.*
+
+</div>
 
 ## Install
 

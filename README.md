@@ -11,7 +11,7 @@
 
 </div>
 
-Minimal O(3) irreducible representations with optional JAX support.
+*Minimal O(3) irreducible representations with optional JAX support.*
 
 ## Install
 

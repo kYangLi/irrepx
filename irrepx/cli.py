@@ -33,30 +33,52 @@ def status():
         try:
             data = dict(np.load(str(fpath)))
             if "cg" in name:
-                cap = _cg_cap_from_data(data)
+                std_lmax = _cg_standard_lmax(data)
+                _, has_soc = _cg_info_from_data(data)
+                cap = std_lmax
+                extra = "  SOC=True" if has_soc else ""
             else:
                 cap = len(data) - 1
+                extra = ""
             size_kb = fpath.stat().st_size / 1024
-            click.echo(f"{label:>8s}:  lmax={cap:>3d},  {size_kb:.0f} KB  ({fpath})")
+            click.echo(f"{label:>8s}:  lmax={cap:>3d},{extra}  {size_kb:.0f} KB  ({fpath})")
         except Exception:
             click.echo(f"{label:>8s}:  (corrupt)  ({fpath})")
 
 
-def _cg_cap_from_data(data: dict) -> int:
+def _cg_info_from_data(data: dict) -> tuple[int, bool]:
+    best_l1 = best_l2 = 0
+    for k in data:
+        if k.startswith("l1="):
+            parts = k.split("/")[0].split(",")
+            l1 = int(parts[0].split("=")[1])
+            l2 = int(parts[1].split("=")[1])
+            best_l1 = max(best_l1, l1)
+            best_l2 = max(best_l2, l2)
+    has_soc = best_l2 > best_l1
+    return max(best_l1, best_l2), has_soc
+
+
+def _cg_standard_lmax(data: dict) -> int:
+    """Return the standard (rectangular) lmax, ignoring SOC rows."""
     best = 0
     for k in data:
         if k.startswith("l1="):
             parts = k.split("/")[0].split(",")
-            best = max(best, int(parts[0].split("=")[1]), int(parts[1].split("=")[1]))
+            l1 = int(parts[0].split("=")[1])
+            l2 = int(parts[1].split("=")[1])
+            if l1 == l2:
+                best = max(best, l1)
     return best
 
 
 @constants.command()
 @click.option("--cg-lmax", type=int, default=None, help="Rebuild CG table with given lmax.")
+@click.option("--cg-include-soc", is_flag=True, default=False, help="Include SOC rows (l1=1, l2 up to 2*lmax).")
 @click.option("--jd-lmax", type=int, default=None, help="Rebuild JD table with given lmax.")
 @click.option("--sb-lmax", type=int, default=None, help="Rebuild SB roots table with given lmax.")
 @click.option("--sb-num-roots", type=int, default=1000, help="Number of roots per l (min 256).")
-def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots):
+def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots, cg_include_soc):
     """Rebuild precomputed tables with larger lmax.
 
     Tries to write into site-packages first.  If that directory is
@@ -71,8 +93,20 @@ def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots):
 
     any_built = False
 
+    if cg_include_soc and cg_lmax is None:
+        import numpy as np
+
+        pkg_npz = importlib.resources.files("irrepx") / "_constants" / "cg.npz"
+        try:
+            with pkg_npz.open("rb") as fh:
+                cg_lmax = _cg_standard_lmax(dict(np.load(fh)))
+            click.echo(f"Auto-detected standard lmax={cg_lmax} from existing cg.npz")
+        except Exception:
+            click.echo("Could not read existing cg.npz; please specify --cg-lmax explicitly.")
+            return
+
     if cg_lmax is not None:
-        _build_cg(target, cg_lmax)
+        _build_cg(target, cg_lmax, include_soc=cg_include_soc)
         any_built = True
     if jd_lmax is not None:
         _build_jd(target, jd_lmax)
@@ -98,28 +132,78 @@ def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots):
     click.echo("Done.")
 
 
-def _build_cg(target: Path, lmax: int):
+def _load_existing_cg(target):
+    """Load existing cg.npz — target path first, package install as fallback."""
+    import numpy as np
+
+    for path in [target / "cg.npz"]:
+        try:
+            return dict(np.load(str(path)))
+        except (FileNotFoundError, OSError):
+            pass
+
+    import importlib.resources
+
+    pkg_npz = importlib.resources.files("irrepx") / "_constants" / "cg.npz"
+    try:
+        with pkg_npz.open("rb") as fh:
+            return dict(np.load(fh))
+    except (FileNotFoundError, OSError):
+        pass
+
+    return {}
+
+
+def _build_cg(target: Path, lmax: int, include_soc: bool = False):
     import numpy as np
 
     from irrepx._constants._compute import clebsch_gordan
 
-    data = {}
+    data = _load_existing_cg(target)
+
+    _ensure_cg_rectangle(data, lmax)
+
+    if include_soc:
+        soc_lmax = 2 * lmax
+        for l2 in range(lmax + 1, soc_lmax + 1):
+            blocks = []
+            for l3 in range(abs(1 - l2), 1 + l2 + 1):
+                blocks.append(clebsch_gordan(1, l2, l3) * np.sqrt(2 * l3 + 1))
+            cg_full = np.concatenate(blocks, axis=-1)
+            rows1, rows2, cols = np.nonzero(cg_full)
+            vals = cg_full[rows1, rows2, cols]
+            key = f"l1=1,l2={l2}"
+            data[f"{key}/coo_l1"] = rows1
+            data[f"{key}/coo_l2"] = rows2
+            data[f"{key}/coo_l"] = cols
+            data[f"{key}/entries"] = vals
+
+    out = target / "cg.npz"
+    np.savez_compressed(out, **data)
+    extra = " +SOC" if include_soc else ""
+    click.echo(f"CG: {out} (lmax={lmax}{extra}, {len(data)} keys)")
+
+
+def _ensure_cg_rectangle(data: dict, lmax: int):
+    import numpy as np
+
+    from irrepx._constants._compute import clebsch_gordan
+
     for l1 in range(lmax + 1):
         for l2 in range(lmax + 1):
+            key = f"l1={l1},l2={l2}"
+            if f"{key}/coo_l1" in data:
+                continue
             blocks = []
             for l3 in range(abs(l1 - l2), l1 + l2 + 1):
                 blocks.append(clebsch_gordan(l1, l2, l3) * np.sqrt(2 * l3 + 1))
             cg_full = np.concatenate(blocks, axis=-1)
             rows1, rows2, cols = np.nonzero(cg_full)
             vals = cg_full[rows1, rows2, cols]
-            key = f"l1={l1},l2={l2}"
             data[f"{key}/coo_l1"] = rows1
             data[f"{key}/coo_l2"] = rows2
             data[f"{key}/coo_l"] = cols
             data[f"{key}/entries"] = vals
-    out = target / "cg.npz"
-    np.savez_compressed(out, **data)
-    click.echo(f"CG: {out} (lmax={lmax}, {len(data)} keys)")
 
 
 def _build_jd(target: Path, lmax: int):

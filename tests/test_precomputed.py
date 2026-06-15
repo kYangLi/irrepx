@@ -12,8 +12,6 @@ from irrepx._constants._compute import clebsch_gordan, jd_seed
 
 
 class TestCgCrossValidation:
-    """Verify load_cg COO data matches clebsch_gordan for every l1,l2,l3."""
-
     @pytest.mark.slow
     def test_all_groups_match(self):
         cg = load_cg()
@@ -25,16 +23,11 @@ class TestCgCrossValidation:
                 rows2 = entry["coo_l2"]
                 cols = entry["coo_l"]
                 vals = entry["entries"]
-
                 dim1 = 2 * l1 + 1
                 dim2 = 2 * l2 + 1
-                dim_total = 0
-                for l3 in range(abs(l1 - l2), l1 + l2 + 1):
-                    dim_total += 2 * l3 + 1
-
+                dim_total = sum(2 * l3 + 1 for l3 in range(abs(l1 - l2), l1 + l2 + 1))
                 dense = np.zeros((dim1, dim2, dim_total))
                 dense[rows1, rows2, cols] = vals
-
                 offset = 0
                 for l3 in range(abs(l1 - l2), l1 + l2 + 1):
                     d3 = 2 * l3 + 1
@@ -46,13 +39,7 @@ class TestCgCrossValidation:
 
     def test_overall_coverage(self):
         cg = load_cg()
-        assert len(cg) == 64
-        for l1 in range(8):
-            for l2 in range(8):
-                key = f"l1={l1},l2={l2}"
-                assert key in cg
-                for f in ("coo_l1", "coo_l2", "coo_l", "entries"):
-                    assert f in cg[key]
+        assert len(cg) == 71  # 64 standard + 7 SOC rows (l1=1, l2=8..14)
 
     def test_entry_nonzero_count(self):
         cg = load_cg()
@@ -62,14 +49,17 @@ class TestCgCrossValidation:
                 entry = cg[key]
                 nz = len(entry["entries"])
                 assert nz > 0, f"CG({l1},{l2}) has zero entries"
-                assert (
-                    len(entry["coo_l1"]) == nz == len(entry["coo_l2"]) == len(entry["coo_l"])
-                ), f"CG({l1},{l2}) has mismatched COO lengths"
+                assert len(entry["coo_l1"]) == nz == len(entry["coo_l2"]) == len(entry["coo_l"])
+
+    def test_dtypes(self):
+        cg = load_cg()
+        entry = cg["l1=1,l2=1"]
+        for f in ("coo_l1", "coo_l2", "coo_l"):
+            assert entry[f].dtype == np.int64
+        assert entry["entries"].dtype == np.float64
 
 
 class TestJdCrossValidation:
-    """Verify load_jd matches jd_seed for every l."""
-
     @pytest.mark.slow
     def test_all_matrices_match(self):
         jd = load_jd()
@@ -99,8 +89,6 @@ class TestJdCrossValidation:
 
 
 class TestSbCrossValidation:
-    """Verify load_sb_roots shape, dtype, and monotonicity."""
-
     def test_counts(self):
         sb = load_sb_roots()
         for ell in range(14):
@@ -119,45 +107,56 @@ class TestSbCrossValidation:
 
 
 class TestLoaderDefaults:
-    """Test load_cg / load_jd / load_sb_roots with default lmax."""
-
-    def test_load_cg_default(self):
+    def test_load_cg(self):
         cg = load_cg()
-        assert len(cg) == 64
+        assert len(cg) == 71
+        assert "l1=0,l2=0" in cg
+        assert "l1=1,l2=8" in cg
 
-    def test_load_jd_default(self):
+    def test_load_jd(self):
         jd = load_jd()
         assert len(jd) == 14
-
-    def test_load_sb_roots_default(self):
-        sb = load_sb_roots()
-        assert len(sb) == 14
-
-    def test_lmax_zero(self):
-        cg = load_cg(0)
-        assert len(cg) == 1
-        assert "l1=0,l2=0" in cg
-
-        jd = load_jd(0)
-        assert len(jd) == 1
         assert jd[0].shape == (1, 1)
 
-        sb = load_sb_roots(0)
-        assert len(sb) == 1
+    def test_load_sb_roots(self):
+        sb = load_sb_roots()
+        assert len(sb) == 14
         assert len(sb[0]) == 1000
 
 
-class TestLoaderErrors:
-    """Test lmax-exceeding ValueError messages."""
+class TestCgSoc:
+    def test_soc_rows_exist(self):
+        cg = load_cg()
+        for l2 in range(8, 15):
+            key = f"l1=1,l2={l2}"
+            assert key in cg, f"SOC entry {key} missing"
+            assert cg[key]["entries"].dtype == np.float64
 
-    def test_cg_exceeds(self):
-        with pytest.raises(ValueError, match="constants update"):
-            load_cg(lmax=99)
+    def test_missing_keys_not_present(self):
+        cg = load_cg()
+        assert "l1=2,l2=8" not in cg
+        assert "l1=0,l2=8" not in cg
+        assert "l1=0,l2=0" in cg
 
-    def test_jd_exceeds(self):
-        with pytest.raises(ValueError, match="constants update"):
-            load_jd(lmax=99)
+    def test_soc_values_match(self):
+        from irrepx._constants._compute import clebsch_gordan
 
-    def test_sb_exceeds(self):
-        with pytest.raises(ValueError, match="constants update"):
-            load_sb_roots(lmax=99)
+        cg = load_cg()
+        entry = cg["l1=1,l2=8"]
+        rows1 = entry["coo_l1"]
+        rows2 = entry["coo_l2"]
+        cols = entry["coo_l"]
+        vals = entry["entries"]
+        dim1 = 3
+        dim2 = 17
+        dim_total = sum(2 * l3 + 1 for l3 in range(7, 10))
+        dense = np.zeros((dim1, dim2, dim_total))
+        dense[rows1, rows2, cols] = vals
+        offset = 0
+        for l3 in range(7, 10):
+            d3 = 2 * l3 + 1
+            expected = clebsch_gordan(1, 8, l3) * np.sqrt(2 * l3 + 1)
+            actual = dense[:, :, offset : offset + d3]
+            diff = np.max(np.abs(actual - expected))
+            assert diff < 1e-10, f"SOC CG(1,8,{l3}): max diff {diff}"
+            offset += d3

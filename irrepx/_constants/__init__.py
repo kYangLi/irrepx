@@ -1,9 +1,8 @@
 """Pre-computed numerical tables (CG, JD, SB roots).
 
 Each *loader* function retrieves data from the npz files shipped with
-the package.  If the requested *lmax* exceeds what the npz contains, a
-:class:`ValueError` is raised with instructions to regenerate via the
-CLI.
+the package.  All entries are returned — callers slice or filter for the
+subset they need.
 """
 
 import importlib.resources
@@ -17,22 +16,16 @@ _REF = importlib.resources.files("irrepx") / "_constants"
 _CG: dict[str, np.ndarray] | None = None
 _JD: dict[str, np.ndarray] | None = None
 _SB: dict[str, np.ndarray] | None = None
-_CG_CAP: int = 0
-_JD_CAP: int = 0
-_SB_CAP: int = 0
 _LOADED: bool = False
 
 
 def _ensure_loaded():
-    global _CG, _JD, _SB, _CG_CAP, _JD_CAP, _SB_CAP, _LOADED
+    global _CG, _JD, _SB, _LOADED
     if _LOADED:
         return
     _CG = _read_npz("cg.npz")
     _JD = _read_npz("jd.npz")
     _SB = _read_npz("sb_root.npz")
-    _CG_CAP = _cg_max_lmax(_CG)
-    _JD_CAP = _tables_max_lmax(_JD)
-    _SB_CAP = _tables_max_lmax(_SB)
     _LOADED = True
 
 
@@ -41,72 +34,45 @@ def _read_npz(name: str) -> dict[str, np.ndarray]:
         return dict(np.load(fh))
 
 
-def _cg_max_lmax(data: dict[str, np.ndarray]) -> int:
-    best = 0
-    for key in data:
-        if key.startswith("l1="):
-            parts = key.split("/")[0].split(",")
-            l1 = int(parts[0].split("=")[1])
-            l2 = int(parts[1].split("=")[1])
-            best = max(best, l1, l2)
-    return best
+def load_cg() -> dict:
+    """Return all CG coefficient entries in the precomputed table.
 
+    Returns a dict keyed by ``"l1=N,l2=M"``, each value is::
 
-def _tables_max_lmax(data: dict[str, np.ndarray]) -> int:
-    best = 0
-    for key in data:
-        if key.startswith("l="):
-            best = max(best, int(key.split("=")[1]))
-    return best
-
-
-def load_cg(lmax: int | None = None) -> dict:
+        {"coo_l1": int64, "coo_l2": int64, "coo_l": int64, "entries": float64}
+    """
     _ensure_loaded()
-    cap = _CG_CAP
-    if lmax is None:
-        lmax = cap
-    if lmax > cap:
-        raise ValueError(
-            f"Requested CG lmax={lmax}, but the precomputed table only "
-            f"covers lmax={cap}.  Run `irrepx constants update --cg-lmax {lmax}` "
-            f"to generate a larger table."
-        )
     out = {}
-    for l1 in range(lmax + 1):
-        for l2 in range(lmax + 1):
-            key = f"l1={l1},l2={l2}"
-            out[key] = {
-                "coo_l1": _CG[f"{key}/coo_l1"],
-                "coo_l2": _CG[f"{key}/coo_l2"],
-                "coo_l": _CG[f"{key}/coo_l"],
-                "entries": _CG[f"{key}/entries"],
-            }
+    for flat_key in _CG:
+        if not flat_key.startswith("l1="):
+            continue
+        l1l2, field = flat_key.split("/")
+        if field != "coo_l1":
+            continue
+        out[l1l2] = {
+            "coo_l1": _CG[f"{l1l2}/coo_l1"],
+            "coo_l2": _CG[f"{l1l2}/coo_l2"],
+            "coo_l": _CG[f"{l1l2}/coo_l"],
+            "entries": _CG[f"{l1l2}/entries"],
+        }
     return out
 
 
-def load_jd(lmax: int | None = None) -> List[np.ndarray]:
+def load_jd() -> List[np.ndarray]:
+    """Return all JD seed matrices.
+
+    ``jd[l]`` is a ``(2l+1, 2l+1)`` float64 matrix, ordered l=0..max.
+    """
     _ensure_loaded()
-    cap = _JD_CAP
-    if lmax is None:
-        lmax = cap
-    if lmax > cap:
-        raise ValueError(
-            f"Requested JD lmax={lmax}, but the precomputed table only "
-            f"covers lmax={cap}.  Run `irrepx constants update --jd-lmax {lmax}` "
-            f"to generate a larger table."
-        )
-    return [_JD[f"l={ell}"] for ell in range(lmax + 1)]
+    keys = sorted(int(k.split("=")[1]) for k in _JD if k.startswith("l="))
+    return [_JD[f"l={ell}"] for ell in keys]
 
 
-def load_sb_roots(lmax: int | None = None) -> List[np.ndarray]:
+def load_sb_roots() -> List[np.ndarray]:
+    """Return all spherical-Bessel root arrays.
+
+    ``roots[l]`` is a 1-D float64 array, ordered l=0..max.
+    """
     _ensure_loaded()
-    cap = _SB_CAP
-    if lmax is None:
-        lmax = cap
-    if lmax > cap:
-        raise ValueError(
-            f"Requested SB roots lmax={lmax}, but the precomputed table only "
-            f"covers lmax={cap}.  Run `irrepx constants update --sb-lmax {lmax}` "
-            f"to generate a larger table."
-        )
-    return [_SB[f"l={ell}"] for ell in range(lmax + 1)]
+    keys = sorted(int(k.split("=")[1]) for k in _SB if k.startswith("l="))
+    return [_SB[f"l={ell}"] for ell in keys]

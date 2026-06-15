@@ -142,10 +142,21 @@ def spherical_harmonics(
         irreps_out = Irreps(irreps_out)
 
     if not isinstance(input, IrrepsArray):
+        # Infer vector parity from irreps_out: all odd-l irreps share one parity
+        vec_p = None
+        for _, ir in irreps_out:
+            if ir.l % 2 == 1:
+                if vec_p is None:
+                    vec_p = ir.p
+                elif vec_p != ir.p:
+                    raise ValueError(f"Inconsistent parity in irreps_out: {irreps_out}")
+        if vec_p is None:
+            vec_p = -1
+        vec_label = f"1{'e' if vec_p == 1 else 'o'}"
         if isinstance(input, jnp.ndarray):
-            input = IrrepsArray("1o", input)
+            input = IrrepsArray(vec_label, input)
         else:
-            input = IrrepsArray("1o", jnp.asarray(input, dtype=jnp.float64))
+            input = IrrepsArray(vec_label, jnp.asarray(input, dtype=jnp.float64))
 
     lmax = irreps_out.lmax
     x = input.array

@@ -1,6 +1,6 @@
 from irrepx._version import __version__
 from irrepx.constants import SPHERICAL_BESSEL_ROOTS, clebsch_gordan, jd_seed, wigner_D
-from irrepx.irreps import Irrep, MulIrrep, Irreps
+from irrepx.irreps import Irrep, MulIrrep, Irreps, tensor_product
 from irrepx.normalize import normalize_function
 
 __all__ = [
@@ -13,6 +13,7 @@ __all__ = [
     "jd_seed",
     "SPHERICAL_BESSEL_ROOTS",
     "normalize_function",
+    "tensor_product",
 ]
 
 _JAX_SYMBOLS = {

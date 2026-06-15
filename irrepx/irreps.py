@@ -831,3 +831,43 @@ def align_two_irreps(irreps1, irreps2):
 
     assert [mul for mul, _ in irreps1_l] == [mul for mul, _ in irreps2_l]
     return Irreps(irreps1_l), Irreps(irreps2_l)
+
+
+def tensor_product(
+    irreps1: IntoIrreps,
+    irreps2: IntoIrreps,
+    *,
+    filter_ir_out=None,
+    regroup_output: bool = True,
+) -> Irreps:
+    r"""Clebsch-Gordan decomposition of the product of two Irreps.
+
+    Pure-structure operation (no JAX required).  Returns the Irreps
+    representation of the tensor product without computing any data.
+
+    Args:
+        irreps1, irreps2: Irreps or Irreps-compatible strings/tuples.
+        filter_ir_out: optional list of Irrep to keep.
+        regroup_output: regroup the output (default True).
+
+    Returns:
+        Irreps: the CG decomposition of ``irreps1 ⊗ irreps2``.
+    """
+    irreps1 = Irreps(irreps1)
+    irreps2 = Irreps(irreps2)
+
+    if filter_ir_out is not None:
+        filter_ir_out = {Irrep(ir) for ir in filter_ir_out}
+
+    out = []
+    for mul1, ir1 in irreps1:
+        for mul2, ir2 in irreps2:
+            for ir_out in ir1 * ir2:
+                if filter_ir_out is not None and ir_out not in filter_ir_out:
+                    continue
+                out.append((mul1 * mul2, ir_out))
+
+    result = Irreps(out)
+    if regroup_output:
+        result = result.regroup()
+    return result

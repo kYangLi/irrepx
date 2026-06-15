@@ -8,13 +8,19 @@ from irrepx.jax.irreps_array import IrrepsArray, from_chunks
 
 
 def tensor_product(
-    input1: IrrepsArray,
-    input2: IrrepsArray,
+    input1,
+    input2,
     *,
     filter_ir_out: Optional[List[Irrep]] = None,
     irrep_normalization: str = "component",
     regroup_output: bool = True,
-) -> IrrepsArray:
+):
+    # Irreps-only mode (no JAX needed)
+    if not isinstance(input1, IrrepsArray) or not isinstance(input2, IrrepsArray):
+        from irrepx.irreps import tensor_product as tp_irreps
+
+        return tp_irreps(input1, input2, filter_ir_out=filter_ir_out, regroup_output=regroup_output)
+
     if filter_ir_out is not None:
         filter_ir_out = [Irrep(ir) for ir in filter_ir_out]
 

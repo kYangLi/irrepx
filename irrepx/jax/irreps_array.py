@@ -255,18 +255,27 @@ def from_chunks(
     return IrrepsArray(irreps, array)
 
 
-def concatenate(input1: IrrepsArray, input2: IrrepsArray, axis: int = 0) -> IrrepsArray:
-    if axis == -1 or axis == input1.array.ndim - 1:
-        return IrrepsArray(
-            input1.irreps + input2.irreps,
-            jnp.concatenate([input1.array, input2.array], axis=-1),
-        )
-    if input1.irreps != input2.irreps:
-        raise ValueError(f"Irreps must match for batch concatenation: {input1.irreps} != {input2.irreps}")
-    return IrrepsArray(
-        input1.irreps,
-        jnp.concatenate([input1.array, input2.array], axis=axis),
-    )
+def concatenate(*arrays, axis: int = 0) -> IrrepsArray:
+    if len(arrays) == 1 and isinstance(arrays[0], (list, tuple)):
+        arrays = arrays[0]
+    if len(arrays) < 2:
+        raise TypeError("concatenate requires at least 2 arrays")
+
+    result = arrays[0]
+    for other in arrays[1:]:
+        if axis == -1 or axis == result.array.ndim - 1:
+            result = IrrepsArray(
+                result.irreps + other.irreps,
+                jnp.concatenate([result.array, other.array], axis=-1),
+            )
+        else:
+            if result.irreps != other.irreps:
+                raise ValueError(f"Irreps must match for batch concatenation: {result.irreps} != {other.irreps}")
+            result = IrrepsArray(
+                result.irreps,
+                jnp.concatenate([result.array, other.array], axis=axis),
+            )
+    return result
 
 
 def as_irreps_array(array: jax.Array) -> IrrepsArray:

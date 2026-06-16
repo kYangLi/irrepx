@@ -110,6 +110,41 @@ class TestIrrepsArray:
         x = IrrepsArray("1x0e", jnp.ones((3, 1), dtype=jnp.float32))
         y = x.astype(jnp.float32)
         assert y.dtype == jnp.float32
+
+
+class TestParityScalarOps:
+    def test_scalar_add(self):
+        x = IrrepsArray("1x0e+1x1o", jnp.array([[5.0, 1.0, 0.0, 0.0]]))
+        y = x + 3.0
+        assert y.array[0, 0] == 8.0  # scalar: 5+3
+        assert y.array[0, 1] == 1.0  # x: unchanged
+        assert y.array[0, 2] == 0.0  # y: unchanged
+        assert y.array[0, 3] == 0.0  # z: unchanged
+
+    def test_scalar_radd(self):
+        x = IrrepsArray("1x0e+1x1o", jnp.array([[5.0, 1.0, 0.0, 0.0]]))
+        y = 3.0 + x
+        assert y.array[0, 0] == 8.0
+        assert y.array[0, 1] == 1.0
+
+    def test_scalar_sub(self):
+        x = IrrepsArray("1x0e+1x1o", jnp.array([[5.0, 1.0, 0.0, 0.0]]))
+        y = x - 2.0
+        assert y.array[0, 0] == 3.0
+        assert y.array[0, 1] == 1.0
+
+    def test_scalar_add_no_even_scalar(self):
+        x = IrrepsArray("1x1o", jnp.array([[1.0, 0.0, 0.0]]))
+        y = x + 5.0
+        assert y.array[0, 0] == 1.0
+        assert y.array[0, 1] == 0.0
+        assert y.array[0, 2] == 0.0
+
+    def test_mul_unchanged(self):
+        x = IrrepsArray("1x0e+1x1o", jnp.array([[5.0, 1.0, 0.0, 0.0]]))
+        y = x * 3.0
+        assert y.array[0, 0] == 15.0
+        assert y.array[0, 1] == 3.0
         # float64 may be truncated to float32 when jax_enable_x64 is off
         with pytest.warns(UserWarning, match="float64"):
             y2 = x.astype(jnp.float64)

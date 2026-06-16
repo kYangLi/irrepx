@@ -91,16 +91,34 @@ class IrrepsArray:
         if isinstance(other, IrrepsArray):
             assert self.irreps == other.irreps
             return IrrepsArray(self.irreps, self.array + other.array)
-        return IrrepsArray(self.irreps, self.array + other)
+        scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
+        if not scalar_sl:
+            return IrrepsArray(self.irreps, self.array)
+        result = self.array
+        for sl in scalar_sl:
+            result = result.at[..., sl].add(other)
+        return IrrepsArray(self.irreps, result)
 
     def __radd__(self, other):
-        return IrrepsArray(self.irreps, other + self.array)
+        scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
+        if not scalar_sl:
+            return IrrepsArray(self.irreps, self.array)
+        result = self.array
+        for sl in scalar_sl:
+            result = result.at[..., sl].add(other)
+        return IrrepsArray(self.irreps, result)
 
     def __sub__(self, other):
         if isinstance(other, IrrepsArray):
             assert self.irreps == other.irreps
             return IrrepsArray(self.irreps, self.array - other.array)
-        return IrrepsArray(self.irreps, self.array - other)
+        scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
+        if not scalar_sl:
+            return IrrepsArray(self.irreps, self.array)
+        result = self.array
+        for sl in scalar_sl:
+            result = result.at[..., sl].add(-other)
+        return IrrepsArray(self.irreps, result)
 
     def __mul__(self, other):
         if isinstance(other, IrrepsArray):

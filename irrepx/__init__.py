@@ -13,6 +13,7 @@ __all__ = [
     "load_cg",
     "load_jd",
     "load_sb_roots",
+    "wigner_D_from_direction",
 ]
 
 _JAX_SYMBOLS = {
@@ -29,14 +30,16 @@ _JAX_SYMBOLS = {
     "s2_irreps",
     "SphericalSignal",
     "normalize_function",
+    "wigner_D_from_direction",
 }
 
 
 def __getattr__(name):
-    if name in ("_jax", "_constants"):
+    if name in ("_jax", "_constants", "_numpy", "jax", "numpy"):
         import importlib
 
-        return importlib.import_module(f"irrepx.{name}")
+        target = f"_{name}" if name in ("jax", "numpy") else name
+        return importlib.import_module(f"irrepx.{target}")
 
     if name in _JAX_SYMBOLS:
         try:
@@ -76,5 +79,10 @@ def __getattr__(name):
         from irrepx._constants import load_sb_roots
 
         return load_sb_roots
+
+    if name == "wigner_D_from_direction":
+        from irrepx._numpy.wigner import wigner_D_from_direction
+
+        return wigner_D_from_direction
 
     raise AttributeError(f"module 'irrepx' has no attribute '{name}'")

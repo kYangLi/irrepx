@@ -4,6 +4,7 @@ Computes rotation matrices from edge direction vectors via
 Gram-Schmidt → Euler angles → JD-seed Wigner D formula.
 """
 
+import functools
 from typing import List
 
 import numpy as np
@@ -11,12 +12,19 @@ import numpy as np
 from irrepx._constants import load_jd
 from irrepx._constants._compute import jd_seed
 
-_JD = load_jd()
+
+@functools.cache
+def _jd() -> list[np.ndarray]:
+    """Lazily loaded JD seed matrices (cached after first call)."""
+    return load_jd()
+
 
 NORM_BASE_X_AXIS = np.array([0.7562168147812394, 0.6543211207366891, 0.0], dtype=np.float64)
 
 
-def wigner_D_from_direction(edge_vec: np.ndarray, l_range: List[int], *, use_precomputed_jd: bool = True) -> List[np.ndarray]:
+def wigner_D_from_direction(
+    edge_vec: np.ndarray, l_range: List[int], *, use_precomputed_jd: bool = True
+) -> List[np.ndarray]:
     """Compute Wigner D matrices from edge direction vectors.
 
     Args:
@@ -53,7 +61,9 @@ def _init_edge_rot_mat(edge_vec: np.ndarray):
     )
 
 
-def _rotation_to_wigner_D_list(edge_rot_mat: np.ndarray, l_range: List, *, use_precomputed_jd: bool = True) -> List[np.ndarray]:
+def _rotation_to_wigner_D_list(
+    edge_rot_mat: np.ndarray, l_range: List, *, use_precomputed_jd: bool = True
+) -> List[np.ndarray]:
     x = edge_rot_mat[:, :, 1]
     alpha, beta = _xyz_to_angles(x)
     y = _angles_to_matrix(alpha, beta, np.zeros_like(alpha))
@@ -66,7 +76,7 @@ def _wigner_D(
     lv: int, alpha: np.ndarray, beta: np.ndarray, gamma: np.ndarray, *, use_precomputed_jd: bool = True
 ) -> np.ndarray:
     alpha, beta, gamma = np.broadcast_arrays(alpha, beta, gamma)
-    J = _JD[lv] if use_precomputed_jd else jd_seed(lv)
+    J = _jd()[lv] if use_precomputed_jd else jd_seed(lv)
     Xa = _z_rot_mat(alpha, lv)
     Xb = _z_rot_mat(beta, lv)
     Xc = _z_rot_mat(gamma, lv)

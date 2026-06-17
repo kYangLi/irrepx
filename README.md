@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![GitHub Actions CI](https://github.com/kYangLi/irrepx/actions/workflows/publish.yaml/badge.svg)](https://github.com/kYangLi/irrepx/actions/workflows/publish.yaml)
+[![CI](https://github.com/kYangLi/irrepx/actions/workflows/ci.yaml/badge.svg)](https://github.com/kYangLi/irrepx/actions/workflows/ci.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/irrepx.svg)](https://pypi.org/project/irrepx/)
 [![Python Versions](https://img.shields.io/badge/python-3.12|3.13|3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/pypi/l/irrepx.svg)](https://pypi.org/project/irrepx/)
@@ -51,21 +51,39 @@ sh = spherical_harmonics([0, 1, 2], x, normalize=True)
 print(sh.irreps)  # 1x0e+1x1o+1x2e
 ```
 
+## Wigner D from direction
+
+Compute Wigner D matrices from edge direction vectors (Gram-Schmidt → Euler
+angles → JD-seed formula).  Available in both numpy (light) and JAX (full) modes.
+
+```python
+import numpy as np
+from irrepx import wigner_D_from_direction
+
+edge = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])  # (E, 3) unit vectors
+D = wigner_D_from_direction(edge, l_range=[0, 1, 2])
+# D[l] is (E, 2l+1, 2l+1)
+```
+
+With JAX, the same call is JIT-compatible and operates on `jnp.ndarray`.
+
 ## Pre-computed constants
 
 irrepx ships pre-computed Clebsch-Gordan coefficients, JD seed matrices,
 and spherical Bessel roots as npz files.  These are loaded lazily on first access.
+The loaders take no arguments and return the full shipped table; callers slice
+or filter the subset they need.
 
 ```python
 from irrepx import load_cg, load_jd, load_sb_roots
 
-cg = load_cg()         # loads from cg.npz, lmax=7 by default
-cg = load_cg(lmax=5)   # subset up to lmax=5
-jd = load_jd()         # loads from jd.npz, lmax=13 by default
-sb = load_sb_roots()   # loads from sb_root.npz, lmax=13 by default
+cg = load_cg()         # dict keyed by "l1=N,l2=M", shipped lmax=7 (+SOC rows)
+jd = load_jd()         # list of (2l+1, 2l+1) matrices, shipped lmax=13
+sb = load_sb_roots()   # list of 1-D root arrays, shipped lmax=13
 ```
 
-If the requested lmax exceeds the shipped tables, rebuild them with the CLI:
+Inspect the shipped capacity with `irrepx constants status`.  If your work
+needs larger tables than shipped, rebuild them with the CLI:
 
 ```bash
 irrepx constants status

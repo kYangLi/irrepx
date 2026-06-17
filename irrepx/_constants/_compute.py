@@ -188,6 +188,12 @@ def compute_sb_roots(lmax: int, num_roots: int = 1000) -> list[np.ndarray]:
     (:math:`\ell + \pi`).  Roots returned as ``root / \pi`` to match the
     DeepH-pack convention.
 
+    Note: the secant method (no ``fprime``) is used deliberately.  The
+    analytic derivative ``spherical_jn(ell, x, derivative=True)`` becomes
+    numerically unstable for large ``ell`` in the small-``x`` region where
+    :math:`j_\ell(x)` itself is near zero, which can stall Newton's method
+    before convergence.  The secant method sidesteps this.
+
     Args:
         lmax: maximum :math:`\ell`.
         num_roots: number of roots per :math:`\ell` (default 1000, min 256).

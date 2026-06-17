@@ -71,17 +71,18 @@ keeping `import irrepx` fast and dependency-free.
 
 Three npz files ship with the package in `irrepx/_constants/`:
 `cg.npz`, `jd.npz`, `sb_root.npz`. They are loaded lazily on first call
-to `load_cg()` / `load_jd()` / `load_sb_roots()`.
+to `load_cg()` / `load_jd()` / `load_sb_roots()`.  The loaders take no
+arguments and return the full shipped table; callers slice or filter the
+subset they need.
 
-If the requested lmax exceeds the shipped capacity, a `ValueError` is
-raised with instructions:
-```
-irrepx constants update --cg-lmax <N>
-```
-
-To inspect current capacity:
+To inspect the shipped capacity:
 ```
 irrepx constants status
+```
+
+To rebuild with larger tables:
+```
+irrepx constants update --cg-lmax <N>
 ```
 
 ## Wigner D / JD Seed

@@ -64,13 +64,17 @@ def test_legendre_vs_e3nn(lmax, rng_key):
 
 
 def test_legendre_vs_recursive_low(rng_key):
+    """Two SH code paths must agree at low l where both are defined."""
+    from irrepx._jax.spherical_harmonics import _legendre_spherical_harmonics, _recursive_spherical_harmonics
+
     x = jax.random.normal(rng_key, (3, 3))
-    xa = IrrepsArray("1o", x)
+    arr = IrrepsArray("1o", x).array
     for l_val in [4, 5, 6, 7]:
-        r = spherical_harmonics(l_val, xa, normalize=True, normalization="component")
-        lsh = spherical_harmonics(l_val, xa, normalize=True, normalization="component")
-        diff = float(jnp.max(jnp.abs(r.array - lsh.array)))
-        assert diff < 1e-4, f"l={l_val} diff={diff}"
+        rec = _recursive_spherical_harmonics(l_val, arr, normalize=True, normalization="component")
+        leg = _legendre_spherical_harmonics(l_val, arr, normalize=True, normalization="component")
+        leg_l = leg[..., l_val**2 : l_val**2 + 2 * l_val + 1]
+        diff = float(jnp.max(jnp.abs(rec[l_val] - leg_l)))
+        assert diff < 5e-3, f"l={l_val} diff={diff}"
 
 
 @pytest.mark.parametrize("normalization", ["component", "integral", "norm"])
@@ -122,7 +126,9 @@ def test_multiplicity_output_legendre(rng_key):
     x = jax.random.normal(rng_key, (2, 3))
     xa = IrrepsArray("1o", x)
     ours = spherical_harmonics(Irreps("3x0e+3x1o+2x2e"), xa, normalize=True, normalization="component")
-    ref = ej.spherical_harmonics(ej.Irreps("3x0e+3x1o+2x2e"), ej.IrrepsArray("1o", x), normalize=True, normalization="component")
+    ref = ej.spherical_harmonics(
+        ej.Irreps("3x0e+3x1o+2x2e"), ej.IrrepsArray("1o", x), normalize=True, normalization="component"
+    )
     diff = float(jnp.max(jnp.abs(ours.array - ref.array)))
     assert diff < 5e-4, f"multiplicity legendre diff={diff}"
 
@@ -131,6 +137,8 @@ def test_multiplicity_output_recursive(rng_key):
     x = jax.random.normal(rng_key, (2, 3))
     xa = IrrepsArray("1o", x)
     ours = spherical_harmonics(Irreps("2x0e+2x1o"), xa, normalize=True, normalization="component")
-    ref = ej.spherical_harmonics(ej.Irreps("2x0e+2x1o"), ej.IrrepsArray("1o", x), normalize=True, normalization="component")
+    ref = ej.spherical_harmonics(
+        ej.Irreps("2x0e+2x1o"), ej.IrrepsArray("1o", x), normalize=True, normalization="component"
+    )
     diff = float(jnp.max(jnp.abs(ours.array - ref.array)))
     assert diff < 5e-4, f"multiplicity recursive diff={diff}"

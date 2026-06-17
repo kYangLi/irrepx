@@ -125,7 +125,7 @@ def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots, cg_include_soc):
         for n in ["cg.npz", "jd.npz", "sb_root.npz"]:
             src = Path.cwd() / n
             if src.exists():
-                click.echo(f"  cp {n} \"{pkg_data / n}\"")
+                click.echo(f'  cp {n} "{pkg_data / n}"')
         click.echo()
         click.echo("After copying, restart Python to reload the tables.")
 

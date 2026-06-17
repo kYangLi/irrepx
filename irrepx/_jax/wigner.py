@@ -4,6 +4,7 @@ Computes rotation matrices from edge direction vectors via
 Gram-Schmidt → Euler angles → JD-seed Wigner D formula.
 """
 
+import functools
 from typing import List
 
 import jax.numpy as jnp
@@ -11,12 +12,19 @@ import jax.numpy as jnp
 from irrepx._constants import load_jd
 from irrepx._constants._compute import jd_seed
 
-_JD = load_jd()
+
+@functools.cache
+def _jd() -> list:
+    """Lazily loaded JD seed matrices (cached after first call)."""
+    return load_jd()
+
 
 NORM_BASE_X_AXIS = jnp.array([0.7562168147812394, 0.6543211207366891, 0.0], dtype=jnp.float32)
 
 
-def wigner_D_from_direction(edge_vec: jnp.ndarray, l_range: List[int], *, use_precomputed_jd: bool = True) -> List[jnp.ndarray]:
+def wigner_D_from_direction(
+    edge_vec: jnp.ndarray, l_range: List[int], *, use_precomputed_jd: bool = True
+) -> List[jnp.ndarray]:
     """Compute Wigner D matrices from edge direction vectors.
 
     Args:
@@ -51,7 +59,9 @@ def _init_edge_rot_mat_jax(edge_vec: jnp.ndarray):
     return jnp.transpose(mat, (0, 2, 1))
 
 
-def _rotation_to_wigner_D_list_jax(edge_rot_mat: jnp.ndarray, l_range: List, *, use_precomputed_jd: bool = True) -> List[jnp.ndarray]:
+def _rotation_to_wigner_D_list_jax(
+    edge_rot_mat: jnp.ndarray, l_range: List, *, use_precomputed_jd: bool = True
+) -> List[jnp.ndarray]:
     x = edge_rot_mat[:, :, 1]
     alpha, beta = _xyz_to_angles_jax(x)
     y_mat = _angles_to_matrix_jax(alpha, beta, jnp.zeros_like(alpha))
@@ -60,8 +70,10 @@ def _rotation_to_wigner_D_list_jax(edge_rot_mat: jnp.ndarray, l_range: List, *, 
     return [_wigner_D_jax(ll, alpha, beta, gamma, use_precomputed_jd=use_precomputed_jd) for ll in l_range]
 
 
-def _wigner_D_jax(lv: int, alpha: jnp.ndarray, beta: jnp.ndarray, gamma: jnp.ndarray, *, use_precomputed_jd: bool = True) -> jnp.ndarray:
-    J_np = _JD[lv] if use_precomputed_jd else jd_seed(lv)
+def _wigner_D_jax(
+    lv: int, alpha: jnp.ndarray, beta: jnp.ndarray, gamma: jnp.ndarray, *, use_precomputed_jd: bool = True
+) -> jnp.ndarray:
+    J_np = _jd()[lv] if use_precomputed_jd else jd_seed(lv)
     J = jnp.array(J_np, dtype=alpha.dtype)
     Xa = _z_rot_mat_jax(alpha, lv)
     Xb = _z_rot_mat_jax(beta, lv)

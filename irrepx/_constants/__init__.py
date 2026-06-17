@@ -10,7 +10,6 @@ from typing import List
 
 import numpy as np
 
-
 _REF = importlib.resources.files("irrepx") / "_constants"
 
 _CG: dict[str, np.ndarray] | None = None

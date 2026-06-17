@@ -3,10 +3,63 @@ import jax.numpy as jnp
 import warnings
 from jax import lax
 
-# NOTE: lpmn_values is deprecated in JAX >= 0.9.x (no replacement planned).
-# If removed, the legendre SH path (l > 8) requires a fallback:
-#   (1) use recursive CG for all l
-#   (2) implement Stratton recurrence for associated Legendre functions
+# =============================================================================
+# lpmn_values deprecation — FALLBACK PLAN
+# =============================================================================
+# `jax.scipy.special.lpmn_values` (used by the l>8 Legendre SH path in
+# `_legendre_gen` below) is deprecated in JAX >= 0.9.x with no planned
+# replacement.  It still works today, but the day jaxlib removes it the
+# `spherical_harmonics(lmax>8, ...)` call will raise AttributeError at
+# trace time.  When that happens, apply ONE of the following fixes.
+#
+# --- Symptom ---------------------------------------------------------------
+#   AttributeError: module 'jax.scipy.special' has no attribute 'lpmn_values'
+#   (raised from `_legendre_gen` during JIT tracing of lmax>8 SH)
+#
+# --- Fix A (RECOMMENDED, ~5 min, unifies the code path) --------------------
+#   Drop the Legendre branch entirely and route everything through the
+#   recursive CG path that already handles l<=8.  Steps:
+#
+#     1. In `spherical_harmonics` (bottom of this file), delete the block:
+#
+#            if lmax > 8:
+#                all_sh = _legendre_spherical_harmonics(...)
+#                ...
+#                return IrrepsArray(irreps_out, result)
+#
+#       so that the `context = _recursive_spherical_harmonics(...)` path
+#       below it runs for ALL lmax.
+#
+#     2. (Optional) Remove `_legendre_gen`, `_sh_beta`, `_legendre_spherical_harmonics`
+#        and the `import warnings` line to avoid dead code.
+#
+#     3. Re-run tests: `pytest tests/test_sh.py -k "legendre or lmax"`.
+#        The recursive path is cross-validated against e3nn-jax for l<=7
+#        already; extend `test_legendre_vs_e3nn`'s parametrize list to
+#        include larger l (e.g. [9,10,12,14]) to confirm equivalence.
+#
+#   Trade-off: recursive CG uses binary decomposition `l = 2^k + r`, so
+#   large lmax increases JIT compile time (more CG einsums).  This is
+#   acceptable for typical equivariant networks (lmax <= 6).  If you
+#   routinely use lmax > 16, prefer Fix B.
+#
+# --- Fix B (Stratton recurrence, more code, better scaling) ----------------
+#   Implement associated Legendre functions P_l^m(x) via Stratton's
+#   forward recurrence (stable on [-1,1], O(lmax^2), fully jittable):
+#
+#       P_0^0 = 1
+#       P_l^l = -(2l-1) sqrt(1-x^2) P_{l-1}^{l-1}            (diagonal)
+#       P_l^{l-1} = (2l-1) x P_{l-1}^{l-1}                   (off-diagonal seed)
+#       P_l^m = ((2l-1) x P_{l-1}^m - (l+m-1) P_{l-2}^m) / (l-m)   (recurrence)
+#
+#   Wrap it as `_stratton_legendre(lmax, x) -> (lmax+1, lmax+1, *batch)` and
+#   replace the `jax.scipy.special.lpmn_values(...)` call in `_legendre_gen`.
+#   Normalise by the standard Condon-Shortley factors to match the
+#   `is_normalized=True` convention currently in use (compare against
+#   scipy.special.lpmn on a few sample points to verify).
+#
+# Until the removal actually happens, DO NOTHING — the code below works.
+# =============================================================================
 
 from irrepx._constants._compute import clebsch_gordan
 from irrepx.irreps import Irreps

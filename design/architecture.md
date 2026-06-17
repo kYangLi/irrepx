@@ -73,11 +73,13 @@ tensor_product), the computational function `clebsch_gordan(l1,l2,l3)`
 uses `@functools.cache` — first call computes, subsequent calls are
 instant.
 
-### 2. Strict lmax ceiling on loaders
-`load_cg` / `load_jd` / `load_sb_roots` raise `ValueError` if the
-requested lmax exceeds the shipped npz capacity.  The error message
-includes the exact CLI command to regenerate with a larger lmax.
-No silent fallback to on-the-fly computation.
+### 2. Loaders return the full shipped table
+`load_cg` / `load_jd` / `load_sb_roots` take no arguments and return the
+entire shipped npz contents.  Callers slice or filter for the subset they
+need.  To check the shipped capacity, run `irrepx constants status`; to
+extend it, run `irrepx constants update --cg-lmax N ...`.  The loaders
+themselves never raise on lmax — they simply hand back everything that is
+on disk.
 
 ### 3. CG via Racah formula + real basis change
 `clebsch_gordan` computes SU(2) complex CG via Racah's formula, then

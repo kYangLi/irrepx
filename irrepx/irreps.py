@@ -387,9 +387,6 @@ class Irreps(tuple):
         """
         return {ir for _, ir in self} == {Irrep("0e")}
 
-    def index(self, _object):  # noqa: D102
-        raise NotImplementedError
-
     def __add__(self, irreps):
         r"""Add two representations."""
         irreps = Irreps(irreps)

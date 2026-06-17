@@ -1,4 +1,5 @@
 import dataclasses
+import warnings
 from typing import List
 
 import jax
@@ -7,7 +8,7 @@ import jax.numpy as jnp
 from irrepx.irreps import Irrep, Irreps
 
 
-@dataclasses.dataclass(init=False)
+@dataclasses.dataclass(init=False, frozen=True, eq=False)
 class IrrepsArray:
     irreps: Irreps
     array: jax.Array
@@ -93,6 +94,10 @@ class IrrepsArray:
             return IrrepsArray(self.irreps, self.array + other.array)
         scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
         if not scalar_sl:
+            warnings.warn(
+                f"IrrepsArray has no 0e slots; scalar addition is a no-op (irreps={self.irreps})",
+                stacklevel=2,
+            )
             return IrrepsArray(self.irreps, self.array)
         result = self.array
         for sl in scalar_sl:
@@ -102,6 +107,10 @@ class IrrepsArray:
     def __radd__(self, other):
         scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
         if not scalar_sl:
+            warnings.warn(
+                f"IrrepsArray has no 0e slots; scalar addition is a no-op (irreps={self.irreps})",
+                stacklevel=2,
+            )
             return IrrepsArray(self.irreps, self.array)
         result = self.array
         for sl in scalar_sl:
@@ -114,6 +123,10 @@ class IrrepsArray:
             return IrrepsArray(self.irreps, self.array - other.array)
         scalar_sl = [sl for (mul, ir), sl in zip(self.irreps, self.irreps.slices()) if ir == Irrep("0e")]
         if not scalar_sl:
+            warnings.warn(
+                f"IrrepsArray has no 0e slots; scalar subtraction is a no-op (irreps={self.irreps})",
+                stacklevel=2,
+            )
             return IrrepsArray(self.irreps, self.array)
         result = self.array
         for sl in scalar_sl:
@@ -139,6 +152,18 @@ class IrrepsArray:
         if not isinstance(other, IrrepsArray):
             return False
         return self.irreps == other.irreps and bool(jnp.all(self.array == other.array))
+
+    # IrrepsArray intentionally unhashable.  The dataclass(frozen=True)
+    # decorator would otherwise auto-generate a `__hash__` built from
+    # `(irreps, array)`, which only fails at *call time* with
+    # "TypeError: unhashable type: 'jaxlib._jax.ArrayImpl'" once someone
+    # actually calls hash(x).  Setting __hash__ = None up-front makes
+    # the unhashable contract explicit and matches e3nn-jax's
+    # @attrs(frozen=True, cmp=False) behaviour, where hash() raises
+    # TypeError immediately because the class is declared unhashable
+    # rather than failing later on the leaf type.  Pytree registration
+    # is unaffected (pytrees do not require hashable containers).
+    __hash__ = None
 
     def __neg__(self):
         return IrrepsArray(self.irreps, -self.array)
@@ -209,7 +234,11 @@ class IrrepsArray:
         The new irreps must have the same simplified form as the current irreps.
         """
         irreps = Irreps(irreps)
-        assert self.irreps.simplify() == irreps.simplify(), (self.irreps, irreps)
+        if self.irreps.simplify() != irreps.simplify():
+            raise ValueError(
+                f"rechunk requires same simplified form, got {self.irreps} (-> {self.irreps.simplify()}) "
+                f"vs {irreps} (-> {irreps.simplify()})"
+            )
 
         if self.irreps == irreps:
             return self
@@ -238,7 +267,8 @@ class IrrepsArray:
                     ci += 1
 
                 take = min(current_mul, (needed - collected) // ir.dim)
-                assert ir == cir, f"ir mismatch: {ir} != {cir}"
+                if ir != cir:
+                    raise ValueError(f"irrep mismatch during rechunk: expected {ir}, got {cir}")
 
                 start = cmul - current_mul
                 parts.append(current_chunk[..., start : start + take, :])
@@ -262,10 +292,26 @@ def from_chunks(
     irreps = Irreps(irreps)
     if len(irreps) == 0:
         return IrrepsArray(irreps, jnp.zeros(leading_shape + (0,), dtype=dtype or jnp.float32))
+
+    chunks = list(chunks)
+    if len(chunks) != len(irreps):
+        raise ValueError(f"from_chunks: got {len(chunks)} chunks for {len(irreps)} irreps entries (irreps={irreps})")
+
+    leading_numel = 1
+    for d in leading_shape:
+        leading_numel *= int(d)
+
     flat = []
-    for (mul, ir), chunk in zip(irreps, chunks):
+    for i, ((mul, ir), chunk) in enumerate(zip(irreps, chunks)):
         if chunk is None:
             chunk = jnp.zeros(leading_shape + (mul, ir.dim), dtype=dtype or jnp.float32)
+        else:
+            expected = leading_numel * mul * ir.dim
+            if int(chunk.size) != expected:
+                raise ValueError(
+                    f"from_chunks: chunk {i} has {chunk.size} elements but irreps[{i}]={mul}x{ir} "
+                    f"with leading_shape {leading_shape} expects {expected} elements"
+                )
         if chunk.shape[-2:] != (mul, ir.dim):
             chunk = chunk.reshape(leading_shape + (mul, ir.dim))
         flat.append(chunk.reshape(leading_shape + (mul * ir.dim,)))

@@ -50,7 +50,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      - name: Install package (test deps: jax + e3nn-jax)
+      - name: "Install package (test deps: jax + e3nn-jax)"
         run: uv pip install --system -e ".[test]"
 
       - name: Run pytest

@@ -22,7 +22,13 @@ class IrrepsArray:
         else:
             array = jnp.asarray(array)
 
-        if array.shape[-1] != irreps.dim:
+        # 0-d arrays (scalars) are accepted only when irreps.dim == 1; the
+        # scalar is reshaped to (1,) so downstream slicing logic works.
+        if array.ndim == 0:
+            if irreps.dim != 1:
+                raise ValueError(f"0-d array can only back irreps.dim==1, got dim={irreps.dim}")
+            array = array.reshape(1)
+        elif array.shape[-1] != irreps.dim:
             raise ValueError(f"Last dimension of array ({array.shape[-1]}) must match " f"irreps.dim ({irreps.dim})")
 
         object.__setattr__(self, "irreps", irreps)
@@ -224,6 +230,19 @@ class IrrepsArray:
     def astype(self, dtype):
         return IrrepsArray(self.irreps, self.array.astype(dtype))
 
+    def broadcast_to(self, shape):
+        """Broadcast leading axes to ``shape``; last dim (irreps.dim) is preserved.
+
+        ``shape[-1]`` may be ``-1`` or equal to ``self.irreps.dim``.
+        """
+        assert isinstance(shape, tuple), f"shape must be tuple, got {type(shape)}"
+        assert (
+            shape[-1] == self.irreps.dim or shape[-1] == -1
+        ), f"last dim of shape must be {self.irreps.dim} or -1, got {shape[-1]}"
+        leading_shape = shape[:-1]
+        array = jnp.broadcast_to(self.array, leading_shape + (self.irreps.dim,))
+        return IrrepsArray(self.irreps, array)
+
     @property
     def slice_by_mul(self):
         return _MulIndexSliceHelper(self)
@@ -319,7 +338,54 @@ def from_chunks(
     return IrrepsArray(irreps, array)
 
 
-def concatenate(*arrays, axis: int = 0) -> IrrepsArray:
+def concatenate(*arrays, axis: int = -1) -> IrrepsArray:
+    r"""Concatenate ``IrrepsArrays`` along a leading (batch) axis or the trailing feature axis.
+
+    The semantics of ``axis`` differ sharply between the two cases; choose
+    deliberately.
+
+    Args:
+        *arrays: Two or more ``IrrepsArray``s to concatenate. A single
+            list/tuple of ``IrrepsArray``s is also accepted, i.e.
+            ``concatenate([a, b])`` works.
+        axis: Axis along which to concatenate.
+
+            * ``axis = -1`` (last axis, **default**): **feature-axis concat.**
+              The irreps of the result are ``a.irreps + b.irreps + ...``
+              (the irreps lists are appended), and the arrays are joined
+              along their last axis. Always well-defined for any inputs;
+              the natural analogue of ``Irreps.__add__``. Use this to build
+              a wider feature space, e.g. ``[x_i, x_j, edge] -> (N, D_x+D_x+D_e)``.
+
+            * ``axis = 0`` (or any other leading/batch axis): **batch-axis
+              stack.** All inputs MUST share identical irreps
+              (``a.irreps == b.irreps``); the result keeps that single
+              irreps and the arrays are joined along the batch axis, e.g.
+              stacking an edge batch and a node batch into ``(E+N, D)``.
+              Raises ``ValueError`` if irreps differ.
+
+    Returns:
+        Concatenated ``IrrepsArray``. For ``axis=-1`` its irreps are the
+        concatenation of inputs' irreps (not simplified/regrouped); for
+        batch-axis its irreps equal the (shared) input irreps.
+
+    Notes:
+        The default ``axis=-1`` matches ``e3nn_jax.concatenate`` and
+        ``Irreps.__add__``. Passing ``axis=0`` without all inputs sharing
+        the same irreps is an error.
+
+    Examples:
+        >>> # feature-axis: irreps appended (default)
+        >>> a = IrrepsArray("2x0e", jnp.zeros((4, 2)))
+        >>> b = IrrepsArray("1x1o", jnp.zeros((4, 3)))
+        >>> concatenate([a, b])  # axis=-1
+        IrrepsArray(2x0e+1x1o, shape=(4, 5), dtype=float32)
+        >>> # batch-axis: irreps must match
+        >>> e = IrrepsArray("1x0e", jnp.zeros((10, 1)))
+        >>> n = IrrepsArray("1x0e", jnp.zeros((4, 1)))
+        >>> concatenate([e, n], axis=0).shape
+        (14, 1)
+    """
     if len(arrays) == 1 and isinstance(arrays[0], (list, tuple)):
         arrays = arrays[0]
     if len(arrays) < 2:

@@ -70,6 +70,26 @@ class TestIrrepsArray:
         with pytest.raises(ValueError):
             concatenate(x, y, axis=0)
 
+    def test_concatenate_default_is_feature_axis(self):
+        """Regression: default axis must be -1 (feature concat), not 0.
+
+        Previously defaulted to axis=0, silently producing (3E, D) instead
+        of (E, 3D) when called as concatenate([a, b, c]). See v0.5.2 changelog.
+        """
+        a = IrrepsArray("2x0e", jnp.zeros((4, 2)))
+        b = IrrepsArray("1x1o", jnp.zeros((4, 3)))
+        out = concatenate([a, b])  # no axis -> default -1
+        assert out.irreps == Irreps("2x0e+1x1o")
+        assert out.shape == (4, 5)
+
+    def test_concatenate_batch_axis_explicit(self):
+        """axis=0 explicit success case (complements batch_mismatch test)."""
+        a = IrrepsArray("1x0e", jnp.zeros((3, 1)))
+        b = IrrepsArray("1x0e", jnp.zeros((5, 1)))
+        out = concatenate([a, b], axis=0)
+        assert out.irreps == Irreps("1x0e")
+        assert out.shape == (8, 1)
+
     def test_as_irreps_array(self):
         x = as_irreps_array(jnp.ones((3, 5)))
         assert x.irreps == Irreps("5x0e")

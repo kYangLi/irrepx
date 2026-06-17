@@ -21,14 +21,11 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
-
-      - name: Set up Python
-        run: |
-          uv python install 3.13
+          python-version: "3.13"
 
       - name: Build package with uv
         run: |
-          uv build --wheel -o dist ./
+          uv build --sdist --wheel -o dist ./
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

@@ -7,6 +7,38 @@ from irrepx.irreps import Irrep, Irreps
 from irrepx._jax.irreps_array import IrrepsArray, from_chunks
 
 
+def _prepare_inputs(input1: IrrepsArray, input2: IrrepsArray):
+    """Unify dtype and broadcast leading shapes of two IrrepsArrays.
+
+    Mirrors ``e3nn_jax._src.tensor_products._prepare_inputs``:
+
+    1. Promote both inputs to a common dtype (integers default to float).
+    2. Compute the broadcasted leading shape via ``jnp.broadcast_shapes``.
+    3. ``broadcast_to`` each input to that leading shape, preserving the
+       trailing feature axis (``irreps.dim``).
+
+    Returns ``(input1, input2, leading_shape)``.
+    """
+    # dtype unification — integers are promoted to default float to avoid
+    # CG einsum producing integer outputs (which would truncate).
+    dtypes = [input1.array.dtype, input2.array.dtype]
+    if any(d.kind == "i" for d in dtypes):
+        target_dtype = jnp.ones(()).dtype
+    else:
+        target_dtype = jnp.result_type(*dtypes)
+    if input1.array.dtype != target_dtype:
+        input1 = input1.astype(target_dtype)
+    if input2.array.dtype != target_dtype:
+        input2 = input2.astype(target_dtype)
+
+    leading_shape = jnp.broadcast_shapes(input1.array.shape[:-1], input2.array.shape[:-1])
+    if input1.array.shape[:-1] != leading_shape:
+        input1 = input1.broadcast_to(leading_shape + (-1,))
+    if input2.array.shape[:-1] != leading_shape:
+        input2 = input2.broadcast_to(leading_shape + (-1,))
+    return input1, input2, leading_shape
+
+
 def tensor_product(
     input1,
     input2,
@@ -28,11 +60,11 @@ def tensor_product(
         input1 = input1.regroup()
         input2 = input2.regroup()
 
+    input1, input2, leading_shape = _prepare_inputs(input1, input2)
+    dtype = input1.array.dtype
+
     out_chunks_irreps = []
     out_chunks = []
-
-    leading_shape = input1.array.shape[:-1]
-    dtype = input1.array.dtype
 
     for (mul1, ir1), chunk1 in zip(input1.irreps, input1.chunks):
         for (mul2, ir2), chunk2 in zip(input2.irreps, input2.chunks):
@@ -83,8 +115,6 @@ def elementwise_tensor_product(
             f"Elementwise tensor product requires same num_irreps, "
             f"got {input1.irreps.num_irreps} != {input2.irreps.num_irreps}"
         )
-    if input1.array.shape[:-1] != input2.array.shape[:-1]:
-        raise ValueError(f"Leading shapes must match, got {input1.array.shape[:-1]} != {input2.array.shape[:-1]}")
 
     # Align irreps so that multiplicities match at each position
     from irrepx.irreps import align_two_irreps
@@ -93,13 +123,15 @@ def elementwise_tensor_product(
     input1 = input1.rechunk(irr1_out)
     input2 = input2.rechunk(irr2_out)
 
+    # dtype unification + leading-shape broadcasting (matches e3nn-jax)
+    input1, input2, leading_shape = _prepare_inputs(input1, input2)
+
     if filter_ir_out is not None:
         filter_ir_out = [Irrep(ir) for ir in filter_ir_out]
 
     out_chunks_irreps = []
     out_chunks = []
 
-    leading_shape = input1.array.shape[:-1]
     dtype = input1.array.dtype
 
     for (mul1, ir1), chunk1, (mul2, ir2), chunk2 in zip(input1.irreps, input1.chunks, input2.irreps, input2.chunks):

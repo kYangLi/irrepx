@@ -30,22 +30,3 @@ def rng_key():
     import jax
 
     return jax.random.PRNGKey(42)
-
-
-@pytest.fixture(scope="module")
-def dtype():
-    import jax.numpy as jnp
-
-    return jnp.float32
-
-
-def _import_e3nn_jax():
-    """Lazy import + skip helper for cross-validation tests."""
-    e3nn_jax = pytest.importorskip("e3nn_jax", reason="e3nn-jax required for cross-validation")
-    return e3nn_jax
-
-
-def _require_jax():
-    """Lazy import + skip helper for JAX-dependent tests."""
-    jax = pytest.importorskip("jax", reason="JAX required")
-    return jax

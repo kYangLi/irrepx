@@ -107,45 +107,6 @@ def clebsch_gordan(l1: int, l2: int, l3: int) -> np.ndarray:
     return np.real(C)
 
 
-def _su2_generators(l: int) -> tuple:  # noqa: E741
-    r"""SU(2) angular momentum generators.
-
-    Returns tuple of three ``(2l+1, 2l+1)`` complex matrices: ``[J_x, J_y, J_z]``,
-    such that rotation by angle ``θ`` is ``exp(θ J)``.
-    """
-    m_up = np.arange(-l, l)
-    raising = np.diag(-np.sqrt(l * (l + 1) - m_up * (m_up + 1)), k=-1)
-
-    m_down = np.arange(-l + 1, l + 1)
-    lowering = np.diag(np.sqrt(l * (l + 1) - m_down * (m_down - 1)), k=1)
-
-    jx = np.array(0.5 * (raising + lowering), dtype=np.complex128)
-    jz = np.array(np.diag(1j * np.arange(-l, l + 1)), dtype=np.complex128)
-    jy = np.array(-0.5j * (raising - lowering), dtype=np.complex128)
-    return jx, jy, jz
-
-
-def _so3_generators(l: int) -> tuple:  # noqa: E741
-    r"""SO(3) generators in the real spherical harmonics basis.
-
-    Transforms the SU(2) generators via
-    :math:`J_{\text{real}} = Q^T \cdot J_{\text{complex}} \cdot Q^*`.
-
-    Returns:
-        Tuple of three ``(2l+1, 2l+1)`` real matrices: ``[Jx, Jy, Jz]``.
-    """
-    jx, jy, jz = _su2_generators(l)
-    Q = _change_basis_real_to_complex(l)
-    Qt = Q.T
-    Qstar = np.conj(Q)
-    return tuple(np.real(Qt @ g @ Qstar) for g in [jx, jy, jz])
-
-
-@functools.cache
-def _so3_cached(l: int) -> tuple:  # noqa: E741
-    return _so3_generators(l)
-
-
 def wigner_D(l: int, alpha, beta, gamma) -> np.ndarray:  # noqa: E741
     r"""Wigner D matrix in the real spherical harmonics basis (ZYZ convention).
 

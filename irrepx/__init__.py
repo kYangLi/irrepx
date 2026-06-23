@@ -49,6 +49,10 @@ def __getattr__(name):
                 from irrepx.irreps import tensor_product as tp
 
                 return tp
+            if name == "elementwise_tensor_product":
+                from irrepx.irreps import elementwise_tensor_product as ewtp
+
+                return ewtp
             raise ImportError(f"`irrepx.{name}` requires JAX. Install with: pip install irrepx[jax]")
         import irrepx._jax as _jax
 

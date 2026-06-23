@@ -869,6 +869,54 @@ def tensor_product(
     return result
 
 
+def elementwise_tensor_product(
+    irreps1: IntoIrreps,
+    irreps2: IntoIrreps,
+    *,
+    filter_ir_out=None,
+) -> Irreps:
+    r"""Elementwise Clebsch-Gordan decomposition of two Irreps.
+
+    Pure-structure operation (no JAX required).  Multiplies corresponding
+    positions of ``irreps1`` and ``irreps2`` (requires same
+    ``num_irreps``), returning the Irreps representation without computing
+    any data.
+
+    The irreps are **not** sorted and **not** simplified/regrouped, matching
+    ``e3nn_jax.elementwise_tensor_product``'s contract.  Call
+    ``result.regroup()`` explicitly if you need a canonical ordering.
+
+    Args:
+        irreps1, irreps2: Irreps or Irreps-compatible strings/tuples.
+            Must have the same ``num_irreps``.
+        filter_ir_out: optional list of Irrep to keep.
+
+    Returns:
+        Irreps: the elementwise CG decomposition (not regrouped).
+    """
+    irreps1 = Irreps(irreps1)
+    irreps2 = Irreps(irreps2)
+
+    if irreps1.num_irreps != irreps2.num_irreps:
+        raise ValueError(
+            f"Elementwise tensor product requires same num_irreps, " f"got {irreps1.num_irreps} != {irreps2.num_irreps}"
+        )
+
+    irreps1, irreps2 = align_two_irreps(irreps1, irreps2)
+
+    if filter_ir_out is not None:
+        filter_ir_out = {Irrep(ir) for ir in filter_ir_out}
+
+    out = []
+    for (mul, ir1), (_, ir2) in zip(irreps1, irreps2):
+        for ir_out in ir1 * ir2:
+            if filter_ir_out is not None and ir_out not in filter_ir_out:
+                continue
+            out.append((mul, ir_out))
+
+    return Irreps(out)
+
+
 # ---------------------------------------------------------------------------
 # JAX pytree registration — opaque leaves (light mode safe via try/except)
 # ---------------------------------------------------------------------------

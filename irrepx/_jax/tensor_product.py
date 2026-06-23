@@ -104,12 +104,21 @@ def tensor_product(
 
 
 def elementwise_tensor_product(
-    input1: IrrepsArray,
-    input2: IrrepsArray,
+    input1,
+    input2,
     *,
     filter_ir_out: Optional[List[Irrep]] = None,
     irrep_normalization: str = "component",
-) -> IrrepsArray:
+):
+    # Irreps-only mode (no JAX needed): delegate to the pure-structure
+    # version in irreps.py.  irrep_normalization does not apply here (it
+    # only scales CG coefficients, which are not computed in this mode);
+    # it is silently ignored, matching e3nn-jax's overload decorator.
+    if not isinstance(input1, IrrepsArray) or not isinstance(input2, IrrepsArray):
+        from irrepx.irreps import elementwise_tensor_product as ewtp_irreps
+
+        return ewtp_irreps(input1, input2, filter_ir_out=filter_ir_out)
+
     if input1.irreps.num_irreps != input2.irreps.num_irreps:
         raise ValueError(
             f"Elementwise tensor product requires same num_irreps, "

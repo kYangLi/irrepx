@@ -90,6 +90,37 @@ class TestIrrepsArray:
         assert out.irreps == Irreps("1x0e")
         assert out.shape == (8, 1)
 
+    def test_init_accepts_zero_d_array(self):
+        """0-d array backs irreps.dim==1 (needed for scalar tp inputs).
+
+        Regression guard for v0.5.2's tensor_product broadcasting, which
+        creates IrrepsArray from jnp.ones(()) scalars.
+        """
+        x = IrrepsArray("1x0e", jnp.ones(()))
+        assert x.shape == (1,)
+        assert x.irreps.dim == 1
+        # 0-d with dim != 1 must raise
+        with pytest.raises(ValueError, match="0-d array"):
+            IrrepsArray("1x1o", jnp.ones(()))
+
+    def test_broadcast_to(self):
+        """broadcast_to expands leading axes, preserves trailing dim."""
+        x = IrrepsArray("1x0e", jnp.ones((1, 1)))
+        # (1,1) -> (4, 1)
+        y = x.broadcast_to((4, -1))
+        assert y.shape == (4, 1)
+        assert y.irreps == Irreps("1x0e")
+        assert jnp.allclose(y.array, jnp.ones((4, 1)))
+        # explicit last dim
+        z = x.broadcast_to((4, 1))
+        assert z.shape == (4, 1)
+        # wrong last dim must raise
+        with pytest.raises(ValueError, match="last dim"):
+            x.broadcast_to((4, 3))
+        # non-tuple shape must raise
+        with pytest.raises(ValueError, match="shape must be tuple"):
+            x.broadcast_to([4, 1])
+
     def test_as_irreps_array(self):
         x = as_irreps_array(jnp.ones((3, 5)))
         assert x.irreps == Irreps("5x0e")

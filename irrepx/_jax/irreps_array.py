@@ -235,10 +235,10 @@ class IrrepsArray:
 
         ``shape[-1]`` may be ``-1`` or equal to ``self.irreps.dim``.
         """
-        assert isinstance(shape, tuple), f"shape must be tuple, got {type(shape)}"
-        assert (
-            shape[-1] == self.irreps.dim or shape[-1] == -1
-        ), f"last dim of shape must be {self.irreps.dim} or -1, got {shape[-1]}"
+        if not isinstance(shape, tuple):
+            raise ValueError(f"shape must be tuple, got {type(shape)}")
+        if shape[-1] != self.irreps.dim and shape[-1] != -1:
+            raise ValueError(f"last dim of shape must be {self.irreps.dim} or -1, got {shape[-1]}")
         leading_shape = shape[:-1]
         array = jnp.broadcast_to(self.array, leading_shape + (self.irreps.dim,))
         return IrrepsArray(self.irreps, array)

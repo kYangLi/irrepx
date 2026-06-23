@@ -19,13 +19,14 @@ def _prepare_inputs(input1: IrrepsArray, input2: IrrepsArray):
 
     Returns ``(input1, input2, leading_shape)``.
     """
-    # dtype unification — integers are promoted to default float to avoid
-    # CG einsum producing integer outputs (which would truncate).
-    dtypes = [input1.array.dtype, input2.array.dtype]
-    if any(d.kind == "i" for d in dtypes):
+    # dtype unification — mirrors e3nn_jax._src.utils.dtype.get_pytree_dtype:
+    # promote all leaves to a common dtype first, then promote integers to
+    # default float (int CG outputs would truncate).  Doing the int check
+    # *before* promotion (the previous logic) mishandles mixed cases like
+    # int16 + float16, which e3nn-jax leaves as float16.
+    target_dtype = jnp.result_type(input1.array.dtype, input2.array.dtype)
+    if target_dtype.kind == "i":
         target_dtype = jnp.ones(()).dtype
-    else:
-        target_dtype = jnp.result_type(*dtypes)
     if input1.array.dtype != target_dtype:
         input1 = input1.astype(target_dtype)
     if input2.array.dtype != target_dtype:

@@ -8,6 +8,7 @@ from scipy.special import spherical_jn, sph_harm_y
 
 _SHT_TOL = 1e-14  # base tolerance; validation uses 1e-14 * 10^(ell/2)
 
+
 def _su2_clebsch_gordan(j1: int, j2: int, j3: int) -> np.ndarray:
     r"""Racah's formula for SU(2) complex Clebsch-Gordan coefficients.
 

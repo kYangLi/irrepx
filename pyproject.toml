@@ -78,6 +78,7 @@ exclude = [
 
 [tool.black]
 line-length = 120
+target-version = ["py313"]
 
 [tool.ruff]
 line-length = 120

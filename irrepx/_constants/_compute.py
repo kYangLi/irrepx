@@ -258,7 +258,7 @@ def compute_sht_coeffs(lmax: int) -> list[tuple[np.ndarray, list[tuple[int, int,
         if ell == 0:
             T = np.ones((1, 1), dtype=np.float64) / np.sqrt(4.0 * np.pi)
             out.append((T, cart))
-            print(f"  SHT l=  0: max_err=0.00e+00 (exact)")
+            print("  SHT l=  0: max_err=0.00e+00 (exact)")
             continue
 
         # Sample points on the UNIT sphere (r=1). This bounds every

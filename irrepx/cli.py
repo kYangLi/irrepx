@@ -25,7 +25,7 @@ def status():
 
     from irrepx._constants import _REF
 
-    for name, label in [("cg.npz", "CG"), ("jd.npz", "JD"), ("sb_root.npz", "SB roots")]:
+    for name, label in [("cg.npz", "CG"), ("jd.npz", "JD"), ("sb_root.npz", "SB roots"), ("sht.npz", "SHT")]:
         fpath = _REF / name
         if not fpath.is_file():
             click.echo(f"{label:>8s}:  (missing)  ({fpath})")
@@ -76,9 +76,10 @@ def _cg_standard_lmax(data: dict) -> int:
 @click.option("--cg-lmax", type=int, default=None, help="Rebuild CG table with given lmax.")
 @click.option("--cg-include-soc", is_flag=True, default=False, help="Include SOC rows (l1=1, l2 up to 2*lmax).")
 @click.option("--jd-lmax", type=int, default=None, help="Rebuild JD table with given lmax.")
+@click.option("--sht-lmax", type=int, default=None, help="Rebuild SHT table with given lmax.")
 @click.option("--sb-lmax", type=int, default=None, help="Rebuild SB roots table with given lmax.")
 @click.option("--sb-num-roots", type=int, default=1000, help="Number of roots per l (min 256).")
-def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots, cg_include_soc):
+def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots, cg_include_soc, sht_lmax):
     """Rebuild precomputed tables with larger lmax.
 
     Tries to write into site-packages first.  If that directory is
@@ -111,18 +112,21 @@ def update(cg_lmax, jd_lmax, sb_lmax, sb_num_roots, cg_include_soc):
     if jd_lmax is not None:
         _build_jd(target, jd_lmax)
         any_built = True
+    if sht_lmax is not None:
+        _build_sht(target, sht_lmax)
+        any_built = True
     if sb_lmax is not None:
         _build_sb(target, sb_lmax, num_roots=sb_num_roots)
         any_built = True
 
     if not any_built:
-        click.echo("No --cg-lmax / --jd-lmax / --sb-lmax specified; nothing to do.")
+        click.echo("No --cg-lmax / --jd-lmax / --sht-lmax / --sb-lmax specified; nothing to do.")
         return
 
     if not writable:
         click.echo()
         click.echo("Site-packages is read-only.  To install the generated files:")
-        for n in ["cg.npz", "jd.npz", "sb_root.npz"]:
+        for n in ["cg.npz", "jd.npz", "sb_root.npz", "sht.npz"]:
             src = Path.cwd() / n
             if src.exists():
                 click.echo(f'  cp {n} "{pkg_data / n}"')
@@ -227,3 +231,15 @@ def _build_sb(target: Path, lmax: int, num_roots: int = 1000):
     out = target / "sb_root.npz"
     np.savez_compressed(out, **data)
     click.echo(f"SB: {out} (lmax={lmax}, {len(data)} keys)")
+
+
+def _build_sht(target: Path, lmax: int):
+    import numpy as np
+
+    from irrepx._constants._compute import compute_sht_coeffs
+
+    coeffs = compute_sht_coeffs(lmax)
+    data = {f"l={ell}": coeffs[ell][0] for ell in range(lmax + 1)}
+    out = target / "sht.npz"
+    np.savez_compressed(out, **data)
+    click.echo(f"SHT: {out} (lmax={lmax}, {len(data)} keys)")

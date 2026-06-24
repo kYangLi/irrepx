@@ -15,16 +15,27 @@ _REF = importlib.resources.files("irrepx") / "_constants"
 _CG: dict[str, np.ndarray] | None = None
 _JD: dict[str, np.ndarray] | None = None
 _SB: dict[str, np.ndarray] | None = None
+_SHT: dict[str, np.ndarray] | None = None
 _LOADED: bool = False
 
 
 def _ensure_loaded():
-    global _CG, _JD, _SB, _LOADED
+    global _CG, _JD, _SB, _SHT, _LOADED
     if _LOADED:
         return
     _CG = _read_npz("cg.npz")
     _JD = _read_npz("jd.npz")
     _SB = _read_npz("sb_root.npz")
+    try:
+        _SHT = _read_npz("sht.npz")
+    except (FileNotFoundError, OSError) as e:
+        raise FileNotFoundError(
+            f"sht.npz not found at {_REF / 'sht.npz'}\n"
+            "Solid harmonic T matrices are shipped separately from the core package.\n"
+            "Generate them with:\n"
+            "    irrepx constants update --sht-lmax 13\n"
+            "This is a one-time operation; the file is cached for future imports."
+        ) from e
     _LOADED = True
 
 
@@ -75,3 +86,23 @@ def load_sb_roots() -> List[np.ndarray]:
     _ensure_loaded()
     keys = sorted(int(k.split("=")[1]) for k in _SB if k.startswith("l="))
     return [_SB[f"l={ell}"] for ell in keys]
+
+
+def load_sht() -> List[np.ndarray]:
+    """Return all Cartesian-to-spherical solid harmonic T matrices.
+
+    ``sht[l]`` is a ``(2l+1, (l+1)(l+2)//2)`` float64 array, ordered l=0..max.
+    """
+    _ensure_loaded()
+    keys = sorted(int(k.split("=")[1]) for k in _SHT if k.startswith("l="))
+    return [_SHT[f"l={ell}"] for ell in keys]
+
+
+def get_cartesian_powers(ell: int) -> list[tuple[int, int, int]]:
+    """Cartesian power triples ``(px, py, pz)`` for total degree *ell*.
+
+    Order matches the columns of ``load_sht()[ell]``.
+    """
+    from irrepx._constants._compute import _cartesian_powers
+
+    return _cartesian_powers(ell)

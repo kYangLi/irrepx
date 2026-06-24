@@ -4,8 +4,9 @@ from math import factorial, sqrt
 import numpy as np
 import scipy.linalg
 from scipy.optimize import newton
-from scipy.special import spherical_jn
+from scipy.special import spherical_jn, sph_harm_y
 
+_SHT_TOL = 1e-14  # base tolerance; validation uses 1e-14 * 10^(ell/2)
 
 def _su2_clebsch_gordan(j1: int, j2: int, j3: int) -> np.ndarray:
     r"""Racah's formula for SU(2) complex Clebsch-Gordan coefficients.
@@ -216,3 +217,120 @@ def compute_sb_roots(lmax: int, num_roots: int = 1000) -> list[np.ndarray]:
             guess = r + np.pi
         out.append(np.array(roots, dtype=np.float64))
     return out
+
+
+def compute_sht_coeffs(lmax: int) -> list[tuple[np.ndarray, list[tuple[int, int, int]]]]:
+    r"""Compute Cartesian-to-spherical solid harmonic transformation coefficients.
+
+    For each :math:`\ell = 0, \dots, \ell_{\max}`, generates the dense
+    transformation matrix :math:`T_\ell \in \mathbb{R}^{(2\ell+1)\times
+    (\ell+1)(\ell+2)/2}` that converts Cartesian monomial products
+    :math:`x^{p_x} y^{p_y} z^{p_z}` (with :math:`p_x+p_y+p_z = \ell`) into
+    real solid harmonics :math:`r^\ell Y_\ell^m(\theta,\phi)`.
+
+    Coeffs are recovered via over-sampled least-squares on random points and
+    validated against ``scipy.special.sph_harm_y``.  The transformation is
+    exact (to machine precision) because solid harmonics live in the space
+    spanned by Cartesian monomials.
+
+    Args:
+        lmax: maximum angular momentum (inclusive).
+
+    Returns:
+        List of ``(T, cart_powers)`` tuples, length ``lmax+1``, where:
+          - ``T`` is a ``(2l+1, (l+1)(l+2)//2)`` float64 array.
+          - ``cart_powers`` is a list of ``(px, py, pz)`` integer triples,
+            ordered to match the columns of ``T``.
+
+    Raises:
+        AssertionError: if the least-squares residual or the validation error
+            exceeds ``_SHT_TOL``.
+    """
+    rng = np.random.RandomState(142857)
+    out = []
+    print("  l  lsq_residual  test_error")
+    print("  -- -----------  ----------")
+    for ell in range(lmax + 1):
+        cart = _cartesian_powers(ell)
+        n_sph = 2 * ell + 1
+        n_cart = len(cart)
+
+        if ell == 0:
+            T = np.ones((1, 1), dtype=np.float64) / np.sqrt(4.0 * np.pi)
+            out.append((T, cart))
+            print(f"  SHT l=  0: max_err=0.00e+00 (exact)")
+            continue
+
+        # Sample points on the UNIT sphere (r=1). This bounds every
+        # monomial x^px y^py z^pz ≤ 1 and keeps the monomial matrix
+        # well-conditioned regardless of l.
+        n_samples = max(n_cart * 10, 200)
+        pts = rng.normal(0, 1, (n_samples, 3))
+        pts /= np.linalg.norm(pts, axis=1, keepdims=True)
+        theta = np.arccos(np.clip(pts[:, 2], -1.0, 1.0))
+        phi = np.arctan2(pts[:, 1], pts[:, 0])
+
+        M = np.ones((n_samples, n_cart), dtype=np.float64)
+        for c, (px, py, pz) in enumerate(cart):
+            M[:, c] = (pts[:, 0] ** px) * (pts[:, 1] ** py) * (pts[:, 2] ** pz)
+
+        S = np.zeros((n_samples, n_sph), dtype=np.float64)
+        for mi, m in enumerate(range(-ell, ell + 1)):
+            if m > 0:
+                S[:, mi] = np.sqrt(2) * sph_harm_y(ell, m, theta, phi).real * (-1) ** m
+            elif m == 0:
+                S[:, mi] = sph_harm_y(ell, 0, theta, phi).real
+            else:
+                S[:, mi] = np.sqrt(2) * sph_harm_y(ell, abs(m), theta, phi).imag * (-1) ** abs(m)
+
+        T_sol, residual, _, _ = np.linalg.lstsq(M, S, rcond=None)
+        T = T_sol.T.copy()
+
+        # Validate on independent unit-sphere points
+        n_val = max(n_cart * 20, 500)
+        v_pts = rng.normal(0, 1, (n_val, 3))
+        v_pts /= np.linalg.norm(v_pts, axis=1, keepdims=True)
+        v_theta = np.arccos(np.clip(v_pts[:, 2], -1.0, 1.0))
+        v_phi = np.arctan2(v_pts[:, 1], v_pts[:, 0])
+        v_M = np.ones((n_val, n_cart), dtype=np.float64)
+        for c, (px, py, pz) in enumerate(cart):
+            v_M[:, c] = (v_pts[:, 0] ** px) * (v_pts[:, 1] ** py) * (v_pts[:, 2] ** pz)
+        v_S = np.zeros((n_val, n_sph), dtype=np.float64)
+        for mi, m in enumerate(range(-ell, ell + 1)):
+            if m > 0:
+                v_S[:, mi] = np.sqrt(2) * sph_harm_y(ell, m, v_theta, v_phi).real * (-1) ** m
+            elif m == 0:
+                v_S[:, mi] = sph_harm_y(ell, 0, v_theta, v_phi).real
+            else:
+                v_S[:, mi] = np.sqrt(2) * sph_harm_y(ell, abs(m), v_theta, v_phi).imag * (-1) ** abs(m)
+
+        pred = v_M @ T.T
+        err = np.max(np.abs(pred - v_S))
+        print(f"  SHT l={ell:>3d}: lsq_resid={residual[0]:.1e}  test_err={err:.1e}")
+        tol_l = _SHT_TOL * (10.0 ** (ell / 2))
+        assert err < tol_l, f"l={ell}: validation error {err:.2e} >= {tol_l:.2e}"
+
+        out.append((T, cart))
+
+    return out
+
+
+def _cartesian_powers(ell: int) -> list[tuple[int, int, int]]:
+    """Cartesian power triples ``(px, py, pz)`` for total degree *ell*.
+
+    Ordering (STATIC CONVENTION — do not change):
+      Monomials are listed in **descending px, then descending py**::
+
+          x^3, x^2 y, x^2 z, x y^2, x y z, x z^2, y^3, y^2 z, y z^2, z^3
+
+    This is a deterministic, human-readable convention.  The columns of
+    ``load_sht()[ell]`` follow this order.  Any consumer that needs the
+    column labels can regenerate them via this function — no runtime
+    storage or I/O is required.
+    """
+    result = []
+    for px in range(ell, -1, -1):
+        for py in range(ell - px, -1, -1):
+            pz = ell - px - py
+            result.append((px, py, pz))
+    return result

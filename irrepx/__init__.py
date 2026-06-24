@@ -13,6 +13,8 @@ __all__ = [
     "load_cg",
     "load_jd",
     "load_sb_roots",
+    "load_sht",
+    "get_cartesian_powers",
     "wigner_D_from_direction",
 ]
 
@@ -83,6 +85,16 @@ def __getattr__(name):
         from irrepx._constants import load_sb_roots
 
         return load_sb_roots
+
+    if name == "load_sht":
+        from irrepx._constants import load_sht
+
+        return load_sht
+
+    if name == "get_cartesian_powers":
+        from irrepx._constants import get_cartesian_powers
+
+        return get_cartesian_powers
 
     if name == "wigner_D_from_direction":
         from irrepx._numpy.wigner import wigner_D_from_direction

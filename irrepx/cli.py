@@ -182,6 +182,19 @@ def _build_cg(target: Path, lmax: int, include_soc: bool = False):
             data[f"{key}/coo_l"] = cols
             data[f"{key}/entries"] = vals
 
+            # exchange l1 and l2
+            blocks = []
+            for l3 in range(abs(1 - l2), 1 + l2 + 1):
+                blocks.append(clebsch_gordan(l2, 1, l3) * np.sqrt(2 * l3 + 1))
+            cg_full = np.concatenate(blocks, axis=-1)
+            rows1, rows2, cols = np.nonzero(cg_full)
+            vals = cg_full[rows1, rows2, cols]
+            key = f"l1={l2},l2={1}"
+            data[f"{key}/coo_l1"] = rows1
+            data[f"{key}/coo_l2"] = rows2
+            data[f"{key}/coo_l"] = cols
+            data[f"{key}/entries"] = vals
+
     out = target / "cg.npz"
     np.savez_compressed(out, **data)
     extra = " +SOC" if include_soc else ""

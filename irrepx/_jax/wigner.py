@@ -19,7 +19,7 @@ def _jd() -> list:
     return load_jd()
 
 
-NORM_BASE_X_AXIS = jnp.array([0.7562168147812394, 0.6543211207366891, 0.0], dtype=jnp.float32)
+NORM_BASE_X_AXIS = (0.7562168147812394, 0.6543211207366891, 0.0)
 
 
 def wigner_D_from_direction(
@@ -40,8 +40,10 @@ def wigner_D_from_direction(
 
 
 def _init_edge_rot_mat_jax(edge_vec: jnp.ndarray):
-    norm_x = edge_vec / (jnp.linalg.norm(edge_vec, axis=1, keepdims=True) + 1e-8)
-    edge_vec_2 = jnp.tile(NORM_BASE_X_AXIS, (edge_vec.shape[0], 1))
+    norm = jnp.linalg.norm(edge_vec, axis=1, keepdims=True)
+    fallback_x = jnp.array([1.0, 0.0, 0.0], dtype=edge_vec.dtype)
+    norm_x = jnp.where(norm > 0, edge_vec / jnp.maximum(norm, 1e-30), fallback_x)
+    edge_vec_2 = jnp.tile(jnp.asarray(NORM_BASE_X_AXIS, dtype=edge_vec.dtype), (edge_vec.shape[0], 1))
     edge_vec_2b = jnp.stack([-edge_vec_2[:, 1], edge_vec_2[:, 0], edge_vec_2[:, 2]], axis=1)
     edge_vec_2c = jnp.stack([edge_vec_2[:, 0], -edge_vec_2[:, 2], edge_vec_2[:, 1]], axis=1)
     dots = jnp.abs(jnp.einsum("ij,ij->i", edge_vec_2, norm_x))
@@ -52,9 +54,13 @@ def _init_edge_rot_mat_jax(edge_vec: jnp.ndarray):
     stacked_vecs = jnp.stack([edge_vec_2, edge_vec_2b, edge_vec_2c], axis=1)
     edge_vec_2 = jnp.take_along_axis(stacked_vecs, min_indices[:, None, None], axis=1).squeeze(1)
     norm_z = jnp.cross(norm_x, edge_vec_2, axis=1)
-    norm_z = norm_z / (jnp.linalg.norm(norm_z, axis=1, keepdims=True) + 1e-8)
+    nz = jnp.linalg.norm(norm_z, axis=1, keepdims=True)
+    fallback_z = jnp.array([0.0, 0.0, 1.0], dtype=edge_vec.dtype)
+    norm_z = jnp.where(nz > 0, norm_z / jnp.maximum(nz, 1e-30), fallback_z)
     norm_y = jnp.cross(norm_x, norm_z, axis=1)
-    norm_y = norm_y / (jnp.linalg.norm(norm_y, axis=1, keepdims=True) + 1e-8)
+    ny = jnp.linalg.norm(norm_y, axis=1, keepdims=True)
+    fallback_y = jnp.array([0.0, 1.0, 0.0], dtype=edge_vec.dtype)
+    norm_y = jnp.where(ny > 0, norm_y / jnp.maximum(ny, 1e-30), fallback_y)
     mat = jnp.stack([norm_z, norm_x, -norm_y], axis=2)
     return jnp.transpose(mat, (0, 2, 1))
 
@@ -109,12 +115,10 @@ def _xyz_to_angles_jax(xyz):
     x = xyz[..., 0]
     y = xyz[..., 1]
     z = xyz[..., 2]
-    mask = (jnp.abs(x) < 1e-6) & (jnp.abs(z) < 1e-6)
+    mask = (x == 0.0) & (z == 0.0)
     x_ = jnp.where(mask, 0.0, x)
     z_ = jnp.where(mask, 1.0, z)
-    eps = 1e-7
-    y_safe = jnp.clip(y, -1.0 + eps, 1.0 - eps)
-    beta = jnp.arccos(y_safe)
+    beta = jnp.where(y == 1.0, 0.0, jnp.where(y == -1.0, jnp.pi, jnp.arccos(y)))
     alpha = jnp.arctan2(x_, z_)
     return alpha, beta
 

@@ -1,0 +1,45 @@
+name: Draft release on tag
+
+# Push a version tag (e.g. `git push origin v0.5.5`) and this workflow:
+#   1. verifies the tag matches `version` in pyproject.toml
+#   2. creates a DRAFT GitHub release for that tag
+# You then review the draft and click "Publish release"; that fires the
+# `release: published` event in publish.yaml, which publishes to PyPI.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify tag matches pyproject.toml version
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          echo "tag version      : ${tag_version}"
+          echo "pyproject version: ${pkg_version}"
+          if [ "${tag_version}" != "${pkg_version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${pkg_version}"
+            exit 1
+          fi
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --draft \
+            --verify-tag \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
